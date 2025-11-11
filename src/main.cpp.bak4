@@ -1,0 +1,21 @@
+#include <Arduino.h>
+#include "touch.h"
+
+void setup() {
+    Serial.begin(115200);
+    Serial.println("Starting touch test");
+    Touch* touch = Touch::getInstance();
+    if (touch->init(8, 9)) {  // SDA=8, SCL=9 pour ESP32-4827S043C
+        Serial.println("GT911 initialized successfully");
+    } else {
+        Serial.println("GT911 initialization failed");
+    }
+}
+
+void loop() {
+    uint16_t x = 0, y = 0;
+    if (Touch::getInstance()->readTouch(&x, &y)) {
+        Serial.printf("Touch at x=%d, y=%d\n", x, y);
+    }
+    delay(10);
+}

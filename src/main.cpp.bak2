@@ -1,0 +1,212 @@
+#include <Arduino.h>
+#include <esp_heap_caps.h>
+#include <esp_log.h>
+#include <esp_lcd_types.h>
+#include <esp_lcd_panel_rgb.h>
+#include <esp_lcd_panel_ops.h>
+#include <driver/gpio.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <lvgl.h>
+
+// LVGL Demo Implementation
+static const char *TAG = "LVGL_TEST";
+static esp_lcd_panel_handle_t panel_handle = NULL;
+static lv_disp_draw_buf_t draw_buf;
+static lv_disp_drv_t disp_drv;
+static lv_color_t *buf1 = NULL;
+static lv_color_t *buf2 = NULL;
+
+// Fonction de flush LVGL vers l'écran LCD
+static void lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_map) {
+    esp_lcd_panel_draw_bitmap(panel_handle, area->x1, area->y1, area->x2 + 1, area->y2 + 1, color_map);
+    lv_disp_flush_ready(drv);
+}
+
+// Gestionnaire de ticks pour LVGL
+static void lv_tick_handler() {
+    lv_tick_inc(portTICK_PERIOD_MS);
+}
+void draw_test_pattern() {
+    ESP_LOGI(TAG, "Starting draw_test_pattern");
+    const int width = 480;
+    const int height = 272;
+    size_t fb_size = width * height * 2; // RGB565 = 16-bit = 2 bytes per pixel
+    
+    ESP_LOGI(TAG, "Allocating %d bytes for framebuffer", fb_size);
+    
+    // Try internal memory first with alignment
+    uint16_t* fb = (uint16_t*)heap_caps_aligned_alloc(64, fb_size, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+    if (!fb) {
+        ESP_LOGW(TAG, "Could not allocate in internal memory, trying PSRAM");
+        fb = (uint16_t*)heap_caps_aligned_alloc(64, fb_size, MALLOC_CAP_SPIRAM);
+        if (!fb) {
+            ESP_LOGE(TAG, "Failed to allocate frame buffer in both memories");
+            return;
+        }
+    }
+    ESP_LOGI(TAG, "Frame buffer allocated at %p", fb);
+
+    // Draw color test pattern
+    for(int y = 0; y < height; y++) {
+        for(int x = 0; x < width; x++) {
+            uint16_t color;
+            
+            // Divise l'écran en 6 sections verticales
+            int section = (x * 6) / width;
+            
+            switch(section) {
+                case 0: // Rouge avec dégradé vertical
+                    color = ((31 * y) / height) << 11;
+                    break;
+                case 1: // Vert avec dégradé vertical
+                    color = ((63 * y) / height) << 5;
+                    break;
+                case 2: // Bleu avec dégradé vertical
+                    color = (31 * y) / height;
+                    break;
+                case 3: // Motif damier rouge/blanc
+                    color = ((x/20 + y/20) % 2) ? 0xF800 : 0xFFFF;
+                    break;
+                case 4: // Dégradé arc-en-ciel horizontal
+                    {
+                        int pos = y % 128;
+                        if(pos < 32)
+                            color = 0xF800 | ((pos * 63)/31) << 5; // Rouge -> Jaune
+                        else if(pos < 64)
+                            color = 0x07E0 | (31 - (pos-32)) << 11; // Jaune -> Vert
+                        else if(pos < 96)
+                            color = 0x07E0 | ((pos-64) >> 1); // Vert -> Cyan
+                        else
+                            color = 0x001F | ((31 - (pos-96)) << 5); // Cyan -> Bleu
+                    }
+                    break;
+                case 5: // Motif de test gris
+                    {
+                        int level = ((x % 32) + (y % 32)) * 31 / 64;
+                        color = (level << 11) | (level << 6) | level;
+                    }
+                    break;
+            }
+            fb[y * width + x] = color;
+        }
+    }
+    
+    // Dessine des lignes de délimitation blanches
+    for(int x = 0; x < width; x++) {
+        fb[0 * width + x] = 0xFFFF;
+        fb[(height-1) * width + x] = 0xFFFF;
+    }
+    for(int y = 0; y < height; y++) {
+        fb[y * width] = 0xFFFF;
+        fb[y * width + (width-1)] = 0xFFFF;
+    }
+
+    // Draw the pattern
+    if (panel_handle) {
+        esp_lcd_panel_draw_bitmap(panel_handle, 0, 0, width, height, fb);
+        ESP_LOGI(TAG, "Test pattern drawn at %lu ms", millis());
+    } else {
+        ESP_LOGE(TAG, "Panel handle is NULL");
+    }
+
+    // Free the buffer
+    heap_caps_free(fb);
+}
+
+void setup() {
+    Serial.begin(115200);
+    ESP_LOGI(TAG, "Starting minimal display test");
+    delay(1000);
+
+    esp_lcd_rgb_panel_config_t panel_config = {};
+    panel_config.clk_src = LCD_CLK_SRC_PLL160M;
+    panel_config.timings.pclk_hz = 4 * 1000000;           // 4 MHz clock for better stability
+    panel_config.timings.h_res = 480;
+    panel_config.timings.v_res = 272;
+    panel_config.timings.hsync_pulse_width = 4;
+    panel_config.timings.hsync_back_porch = 43;
+    panel_config.timings.hsync_front_porch = 8;
+    panel_config.timings.vsync_pulse_width = 4;
+    panel_config.timings.vsync_back_porch = 12;
+    panel_config.timings.vsync_front_porch = 8;
+    panel_config.timings.flags.hsync_idle_low = true;
+    panel_config.timings.flags.vsync_idle_low = true;
+    panel_config.timings.flags.de_idle_high = false;
+    panel_config.timings.flags.pclk_active_neg = true;    // Inverted clock
+    panel_config.timings.flags.pclk_idle_high = true;
+    panel_config.data_width = 16;                         // RGB565
+    panel_config.sram_trans_align = 64;
+    panel_config.psram_trans_align = 64;                   // Reduced alignment to fix GDMA error
+    
+    // Pin configuration validated for ESP32-4827S043C
+    panel_config.hsync_gpio_num = (gpio_num_t)39;         // HSYNC
+    panel_config.vsync_gpio_num = (gpio_num_t)41;         // VSYNC
+    panel_config.de_gpio_num = GPIO_NUM_NC;               // DE disabled (key fix for flicker)
+    panel_config.pclk_gpio_num = (gpio_num_t)42;         // PCLK
+    panel_config.data_gpio_nums[0] = (gpio_num_t)8;      // R0
+    panel_config.data_gpio_nums[1] = (gpio_num_t)3;      // R1
+    panel_config.data_gpio_nums[2] = (gpio_num_t)46;     // R2
+    panel_config.data_gpio_nums[3] = (gpio_num_t)9;      // R3
+    panel_config.data_gpio_nums[4] = (gpio_num_t)1;      // R4
+    panel_config.data_gpio_nums[5] = (gpio_num_t)5;      // G0
+    panel_config.data_gpio_nums[6] = (gpio_num_t)6;      // G1
+    panel_config.data_gpio_nums[7] = (gpio_num_t)7;      // G2
+    panel_config.data_gpio_nums[8] = (gpio_num_t)15;     // G3
+    panel_config.data_gpio_nums[9] = (gpio_num_t)16;     // G4
+    panel_config.data_gpio_nums[10] = (gpio_num_t)4;     // G5
+    panel_config.data_gpio_nums[11] = (gpio_num_t)45;    // B0
+    panel_config.data_gpio_nums[12] = (gpio_num_t)48;    // B1
+    panel_config.data_gpio_nums[13] = (gpio_num_t)47;    // B2
+    panel_config.data_gpio_nums[14] = (gpio_num_t)21;    // B3
+    panel_config.data_gpio_nums[15] = (gpio_num_t)14;    // B4
+    
+    panel_config.disp_gpio_num = GPIO_NUM_NC;
+    panel_config.flags.fb_in_psram = true;               // Use PSRAM for framebuffer
+    panel_config.flags.relax_on_idle = true;             // Help reduce interference
+
+    ESP_LOGI(TAG, "Initializing LCD panel...");
+    esp_err_t ret = esp_lcd_new_rgb_panel(&panel_config, &panel_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Panel init failed: 0x%x", ret);
+        return;
+    }
+
+    ret = esp_lcd_panel_reset(panel_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Panel reset failed: 0x%x", ret);
+        return;
+    }
+
+    ret = esp_lcd_panel_init(panel_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Panel init failed: 0x%x", ret);
+        return;
+    }
+
+    // Initialize backlight pin
+    const int BACKLIGHT_PIN = 2;  // GPIO2 is typically used for backlight
+    ESP_LOGI(TAG, "Initializing backlight on GPIO%d", BACKLIGHT_PIN);
+    pinMode(BACKLIGHT_PIN, OUTPUT);
+    
+    // Allow panel to stabilize
+    delay(100);
+    
+    // Turn on backlight
+    digitalWrite(BACKLIGHT_PIN, HIGH);
+    ESP_LOGI(TAG, "Backlight enabled");
+    
+    delay(100); // Wait for backlight to stabilize
+    
+    ESP_LOGI(TAG, "Drawing initial test pattern...");
+    draw_test_pattern();
+}
+
+void loop() {
+    static uint32_t last_draw = 0;
+    if (millis() - last_draw > 5000) {  // Redraw every 5 seconds
+        draw_test_pattern();
+        last_draw = millis();
+    }
+    delay(100);  // Small delay to avoid hammering the CPU
+}

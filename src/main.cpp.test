@@ -1,0 +1,35 @@
+#include <Arduino.h>
+#include <Wire.h>
+#include "gt911.h"
+
+// Définition des pins pour le GT911
+#define GT911_SDA         8
+#define GT911_SCL         9
+#define GT911_INT        18
+#define GT911_RST        38
+
+// Création de l'instance GT911
+GT911 touch = GT911(GT911_SDA, GT911_SCL, GT911_INT, GT911_RST);
+
+void setup() {
+    Serial.begin(115200);
+    Wire.begin(GT911_SDA, GT911_SCL);
+    
+    // Initialisation du GT911
+    touch.begin();
+    Serial.println("GT911 initialized");
+}
+
+void loop() {
+    // Lecture des points de contact
+    if (touch.read()) {
+        const auto& points = touch.getPoints();
+        for (const auto& point : points) {
+            if (point.touching) {
+                Serial.printf("Point %d: x=%d, y=%d, pressure=%d\n", 
+                    point.id, point.x, point.y, point.pressure);
+            }
+        }
+    }
+    delay(10);
+}

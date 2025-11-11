@@ -1,0 +1,813 @@
+#include <Arduino.h>
+#include <esp_heap_caps.h>
+#include <esp_log.h>
+#include <esp_lcd_types.h>
+#include <esp_lcd_panel_rgb.h>
+#include <esp_lcd_panel_ops.h>
+#include <driver/gpio.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+
+// Test mode - minimal test pattern
+static const char *TAG = "DISPLAY_TEST";
+esp_lcd_panel_handle_t panel_handle = NULL;
+
+// Draw a test pattern
+void draw_test_pattern() {
+    const int width = 480;
+    const int height = 272;
+    const int bpp = 16; // RGB565
+    size_t fb_size = width * height * 2; // 2 bytes per pixel
+    
+    // Allocate frame buffer in PSRAM
+    uint16_t* fb = (uint16_t*)heap_caps_malloc(fb_size, MALLOC_CAP_SPIRAM);
+    if (!fb) {
+        ESP_LOGE(TAG, "Failed to allocate frame buffer");
+        return;
+    }
+
+    // Fill with red/white stripes
+    for(int y = 0; y < height; y++) {
+        for(int x = 0; x < width; x++) {
+            uint16_t color = (x < width/2) ? 0xF800 : 0xFFFF; // Red : White in RGB565
+            fb[y * width + x] = color;
+        }
+    }
+
+    // Draw the pattern
+    if (panel_handle) {
+        esp_lcd_panel_draw_bitmap(panel_handle, 0, 0, width, height, fb);
+        ESP_LOGI(TAG, "Test pattern drawn at %lu ms", millis());
+    } else {
+        ESP_LOGE(TAG, "Panel handle is NULL");
+    }
+
+    // Free the buffer
+    heap_caps_free(fb);
+}
+
+static const char *TAG = "DASHBOARD";
+esp_lcd_panel_handle_t panel_handle = NULL;
+
+// Fallback (hardcoded) — can be overridden by saved config
+const char* ssid = "YOUR_SSID";
+const char* password = "YOUR_PASSWORD";
+
+// Default bitaxe URL (override via portal)
+const char* bitaxe_url = "http://YOUR_BITAXE_IP/api/system/info";
+
+// Config storage & web server for portal
+Preferences prefs;
+WebServer webServer(80);
+String cfg_ssid = "";
+String cfg_password = "";
+String cfg_bitaxe_url = String(bitaxe_url);
+// Backlight / brightness sensor config
+int cfg_bl_pin = -1; // backlight PWM pin (user-configurable)
+int cfg_btn_pin = -1; // brightness override button pin (user-configurable)
+bool forced_max_brightness = false;
+// I2C pins (configurable via portal). Default to board I2C pins (SDA=19,SCL=20).
+int cfg_i2c_sda = 19;
+int cfg_i2c_scl = 20;
+
+// Safe mode: when enabled the firmware will NOT initialize the RGB panel, I2C or backlight.
+// Use this to isolate boot/root-cause issues (brownout, asserts, etc.).
+#define SAFE_MODE 0
+// Incremental feature flags - change these to enable subsystems during debugging.
+// For the next test we want: PANEL=1, BL=0, I2C=0 (panel-only test)
+#define ENABLE_PANEL 1
+#define ENABLE_BL 0
+#define ENABLE_I2C 0
+// Heartbeat pin (avoid using TFT_BL)
+int heartbeat_pin = -1;
+
+void save_config() {
+    prefs.begin("touchaxe", false);
+    prefs.putString("ssid", cfg_ssid);
+    prefs.putString("pass", cfg_password);
+    prefs.putString("bitaxe", cfg_bitaxe_url);
+    prefs.putInt("blpin", cfg_bl_pin);
+    prefs.putInt("btnpin", cfg_btn_pin);
+    prefs.putInt("i2c_sda", cfg_i2c_sda);
+    prefs.putInt("i2c_scl", cfg_i2c_scl);
+    prefs.end();
+    ESP_LOGI(TAG, "Config saved");
+}
+
+void load_config() {
+    prefs.begin("touchaxe", true);
+    cfg_ssid = prefs.getString("ssid", "");
+    cfg_password = prefs.getString("pass", "");
+    cfg_bitaxe_url = prefs.getString("bitaxe", cfg_bitaxe_url.c_str());
+    cfg_bl_pin = prefs.getInt("blpin", -1);
+    cfg_btn_pin = prefs.getInt("btnpin", -1);
+    cfg_i2c_sda = prefs.getInt("i2c_sda", cfg_i2c_sda);
+    cfg_i2c_scl = prefs.getInt("i2c_scl", cfg_i2c_scl);
+    prefs.end();
+    ESP_LOGI(TAG, "Loaded config: ssid='%s' bitaxe='%s' blpin=%d btnpin=%d", cfg_ssid.c_str(), cfg_bitaxe_url.c_str(), cfg_bl_pin, cfg_btn_pin);
+}
+
+String configPageHtml(const IPAddress &ip) {
+    // Futuristic black/red portal page
+    String html = "<!doctype html><html lang=\"en\">";
+    html += "<head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">";
+    html += "<title>TOUCHAXE Setup</title>";
+    html += "<style>body{margin:0;font-family:Inter,Segoe UI,Roboto,Arial;background:#000;color:#eee;}";
+    html += ".wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}";
+    html += ".card{width:820px;max-width:95%;background:linear-gradient(180deg,#060606, #0b0b0b);border:1px solid rgba(255,0,0,0.12);box-shadow:0 10px 40px rgba(255,0,0,0.04);padding:28px;border-radius:12px;overflow:hidden;}";
+    html += ".brand{display:flex;align-items:center;gap:14px;margin-bottom:18px;}";
+    html += ".logo{width:64px;height:64px;border-radius:10px;background:radial-gradient(circle at 30% 20%,#ff2d2d 0%,#500 45%,#120 100%);box-shadow:0 6px 20px rgba(255,0,0,0.12) inset;}";
+    html += ".title{font-size:28px;color:#ff3b3b;letter-spacing:2px;font-weight:700;}";
+    html += ".subtitle{color:#888;margin-top:4px;font-size:12px;}";
+    html += "label{display:block;margin:12px 0 6px;color:#f0f0f0;font-size:13px;}";
+    html += "input[type=text],input[type=password]{width:100%;padding:12px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#0b0b0b;color:#fff;font-size:14px;}";
+    html += ".row{display:flex;gap:12px;} .col{flex:1;}";
+    html += ".actions{display:flex;justify-content:space-between;align-items:center;margin-top:18px;}";
+    html += ".btn{background:linear-gradient(90deg,#ff4040,#ff0000);color:#fff;padding:10px 16px;border-radius:10px;border:none;cursor:pointer;font-weight:700;}";
+    html += ".hint{color:#999;font-size:12px;}";
+    html += ".footer{margin-top:18px;color:#aa0000;font-size:12px;text-align:center;opacity:0.9;}";
+    html += "@media (max-width:600px){.card{padding:18px}.title{font-size:20px}}";
+    html += "</style></head><body>";
+    html += "<div class='wrap'><div class='card'>";
+    html += "<div class='brand'><div class='logo'></div><div><div class='title'>TOUCHAXE</div><div class='subtitle'>created by silexperience — portal configuration</div></div></div>";
+    html += "<form method='POST' action='/save' autocomplete='off'>";
+    html += "<label>Wi‑Fi SSID</label>";
+    html += "<input type='text' name='ssid' placeholder='Your network name' value='" + cfg_ssid + "' />";
+    html += "<label>Wi‑Fi Password</label>";
+    html += "<input type='password' name='pass' placeholder='Password' value='" + cfg_password + "' />";
+    html += "<label>Bitaxe URL</label>";
+    html += "<input type='text' name='bitaxe' placeholder='http://192.168.x.x/api/...' value='" + cfg_bitaxe_url + "' />";
+    html += "<label>Backlight PWM pin (optional)</label>";
+    html += "<input type='text' name='blpin' placeholder='GPIO number (e.g. 14)' value='" + String(cfg_bl_pin) + "' />";
+    html += "<label>Brightness override button pin (optional)</label>";
+    html += "<input type='text' name='btnpin' placeholder='GPIO number (e.g. 0)' value='" + String(cfg_btn_pin) + "' />";
+    html += "<label>I2C SDA pin (for BH1750 / touch) - default 19</label>";
+    html += "<input type='text' name='i2c_sda' placeholder='GPIO number (e.g. 19)' value='" + String(cfg_i2c_sda) + "' />";
+    html += "<label>I2C SCL pin (for BH1750 / touch) - default 20</label>";
+    html += "<input type='text' name='i2c_scl' placeholder='GPIO number (e.g. 20)' value='" + String(cfg_i2c_scl) + "' />";
+    html += "<div class='actions'><div class='hint'>AP IP: " + ip.toString() + "</div><button class='btn' type='submit'>Save & Restart</button></div>";
+    html += "</form><div class='footer'>Future‑ready • Black & Red • TOUCHAXE</div></div></div>";
+    html += "</body></html>";
+    return html;
+}
+
+void handleRoot() {
+    IPAddress ip = WiFi.softAPIP();
+    webServer.send(200, "text/html", configPageHtml(ip));
+}
+
+void handleSave() {
+    if (webServer.hasArg("ssid")) cfg_ssid = webServer.arg("ssid");
+    if (webServer.hasArg("pass")) cfg_password = webServer.arg("pass");
+    if (webServer.hasArg("bitaxe")) cfg_bitaxe_url = webServer.arg("bitaxe");
+    if (webServer.hasArg("blpin")) {
+        String s = webServer.arg("blpin");
+        cfg_bl_pin = s.length() ? s.toInt() : -1;
+    }
+    if (webServer.hasArg("btnpin")) {
+        String s = webServer.arg("btnpin");
+        cfg_btn_pin = s.length() ? s.toInt() : -1;
+    }
+    if (webServer.hasArg("i2c_sda")) {
+        String s = webServer.arg("i2c_sda");
+        cfg_i2c_sda = s.length() ? s.toInt() : cfg_i2c_sda;
+    }
+    if (webServer.hasArg("i2c_scl")) {
+        String s = webServer.arg("i2c_scl");
+        cfg_i2c_scl = s.length() ? s.toInt() : cfg_i2c_scl;
+    }
+    save_config();
+    webServer.send(200, "text/html", "<html><body><h3>Saved. Rebooting...</h3></body></html>");
+    delay(600);
+    ESP.restart();
+}
+
+void startConfigPortal(uint32_t timeout_ms = 180000) {
+    const char *ap_ssid = "TouchAxe-Setup";
+    ESP_LOGI(TAG, "Starting config portal AP: %s", ap_ssid);
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP(ap_ssid);
+    delay(500);
+    IPAddress apIP = WiFi.softAPIP();
+    ESP_LOGI(TAG, "AP IP: %s", apIP.toString().c_str());
+
+    webServer.on("/", HTTP_GET, handleRoot);
+    webServer.on("/save", HTTP_POST, handleSave);
+    webServer.begin();
+
+    uint32_t start = millis();
+    while (millis() - start < timeout_ms) {
+        webServer.handleClient();
+        delay(2);
+    }
+
+    webServer.stop();
+    ESP_LOGI(TAG, "Config portal timeout");
+    WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_STA);
+}
+const char* bitcoin_price_url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd";
+const char* bitcoin_block_url = "https://mempool.space/api/blocks/tip/height";
+const char* bitcoin_fees_url = "https://mempool.space/api/v1/fees/recommended";
+const char* bitcoin_hashrate_url = "https://blockchain.info/q/hashrate";
+
+String bitaxe_data = "Loading Bitaxe...";
+String btc_price = "Loading Price...";
+String btc_block = "Loading Block...";
+String btc_fees = "Loading Fees...";
+String btc_hashrate = "Loading Network...";
+String current_time = "Loading Time...";
+
+// BH1750 presence flag
+bool bh1750_present = false;
+
+const int NUM_PAGES = 3;
+lv_obj_t *pages[NUM_PAGES];
+int current_page = 0;
+
+static void flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
+    lv_display_rotation_t rot = lv_display_get_rotation(disp);
+    void *rotation_buffer = NULL;
+
+    if (rot != LV_DISPLAY_ROTATION_0) {
+        size_t buf_size = lv_area_get_size(area) * LV_COLOR_DEPTH / 8;
+        rotation_buffer = heap_caps_malloc(buf_size, MALLOC_CAP_DMA);
+        if (rotation_buffer == NULL) {
+            ESP_LOGE(TAG, "DMA alloc failed");
+            goto flush_direct;
+        }
+
+        lv_draw_sw_rotate(px_map, rotation_buffer, lv_area_get_width(area), lv_area_get_height(area),
+                          lv_area_get_width(area) * LV_COLOR_DEPTH / 8, lv_area_get_width(area) * LV_COLOR_DEPTH / 8,
+                          rot, LV_COLOR_FORMAT_RGB565);
+        px_map = (uint8_t *)rotation_buffer;
+    }
+
+flush_direct:
+    if (panel_handle == NULL) {
+        ESP_LOGE(TAG, "Panel handle null");
+        lv_display_flush_ready(disp);
+        if (rotation_buffer) heap_caps_free(rotation_buffer);
+        return;
+    }
+    // esp_lcd_panel_draw_bitmap expects start/end coordinates (x1,y1,x2,y2),
+    // not width/height. Pass area->x2 / area->y2 as the end positions.
+    int xs = area->x1;
+    int ys = area->y1;
+    int xe = area->x2;
+    int ye = area->y2;
+    ESP_LOGD(TAG, "flush area: x1=%d y1=%d x2=%d y2=%d (w=%d h=%d)", xs, ys, xe, ye, lv_area_get_width(area), lv_area_get_height(area));
+
+    // Defensive check: the RGB driver expects start < end. If LVGL gives an
+    // empty/degenerate area we skip the draw to avoid driver assertions.
+    if (xs >= xe || ys >= ye) {
+        ESP_LOGW(TAG, "Skipping invalid flush area (xs=%d xe=%d ys=%d ye=%d)", xs, xe, ys, ye);
+        lv_display_flush_ready(disp);
+        if (rotation_buffer) heap_caps_free(rotation_buffer);
+        return;
+    }
+
+    esp_lcd_panel_draw_bitmap(panel_handle, xs, ys, xe, ye, px_map);
+    lv_display_flush_ready(disp);
+    if (rotation_buffer) heap_caps_free(rotation_buffer);
+}
+
+void fetch_data() {
+    if (WiFi.status() != WL_CONNECTED) return;
+
+    HTTPClient http;
+    String payload;
+    DeserializationError err;
+
+    // Bitaxe
+    // Use configured Bitaxe URL if available
+    http.begin(cfg_bitaxe_url.c_str());
+    if (http.GET() == HTTP_CODE_OK) {
+        payload = http.getString();
+    StaticJsonDocument<2048> doc;
+        err = deserializeJson(doc, payload);
+        if (!err) {
+            String hr = doc["hashRate"].is<float>() ? String(doc["hashRate"].as<float>()) : "N/A";
+            String tmp = doc["temp"].is<const char*>() ? String(doc["temp"].as<const char*>()) : "N/A";
+            String volt = doc["voltage"].is<const char*>() ? String(doc["voltage"].as<const char*>()) : "N/A";
+            String pwr = doc["power"].is<const char*>() ? String(doc["power"].as<const char*>()) : "N/A";
+            String fans = doc["fanrpm"].is<const char*>() ? String(doc["fanrpm"].as<const char*>()) : "N/A";
+            String up = doc["uptimeSeconds"].is<const char*>() ? String(doc["uptimeSeconds"].as<const char*>()) : "N/A";
+            bitaxe_data = "Hashrate: " + hr + " GH/s\nTemp: " + tmp + "°C\nVoltage: " + volt + "V\nPower: " + pwr + "W\nFans: " + fans + " RPM\nUptime: " + up + "s";
+        } else {
+            ESP_LOGW(TAG, "Bitaxe JSON parse error: %s", err.c_str());
+        }
+    }
+    http.end();
+
+    // Bitcoin price
+    http.begin(bitcoin_price_url);
+    if (http.GET() == HTTP_CODE_OK) {
+        payload = http.getString();
+    StaticJsonDocument<512> doc;
+        err = deserializeJson(doc, payload);
+        if (!err && doc["bitcoin"]["usd"].is<float>()) {
+            btc_price = "Price: $" + String(doc["bitcoin"]["usd"].as<float>());
+        } else {
+            ESP_LOGW(TAG, "Price JSON parse/format error");
+            btc_price = "Price: unavailable";
+        }
+    }
+    http.end();
+
+    // Block height (plain text)
+    http.begin(bitcoin_block_url);
+    if (http.GET() == HTTP_CODE_OK) {
+        payload = http.getString();
+        btc_block = "Block Height: " + payload;
+    }
+    http.end();
+
+    // Fees
+    http.begin(bitcoin_fees_url);
+    if (http.GET() == HTTP_CODE_OK) {
+        payload = http.getString();
+    StaticJsonDocument<512> doc;
+        err = deserializeJson(doc, payload);
+        if (!err && doc["halfHourFee"].is<float>()) {
+            btc_fees = "Avg Fees: " + String(doc["halfHourFee"].as<float>()) + " sat/vB";
+        } else {
+            ESP_LOGW(TAG, "Fees JSON parse/format error");
+            btc_fees = "Avg Fees: unavailable";
+        }
+    }
+    http.end();
+
+    // Network hashrate (plain number)
+    http.begin(bitcoin_hashrate_url);
+    if (http.GET() == HTTP_CODE_OK) {
+        payload = http.getString();
+        float h = payload.toFloat();
+        btc_hashrate = "Network Hashrate: " + String(h / 1e9, 2) + " EH/s";
+    }
+    http.end();
+
+    time_t now;
+    time(&now);
+    char buf[20];
+    strftime(buf, sizeof(buf), "%H:%M:%S", localtime(&now));
+    current_time = "Time: " + String(buf);
+}
+
+void update_ui() {
+    if (pages[0]) lv_label_set_text(lv_obj_get_child(pages[0], 0), bitaxe_data.c_str());
+    if (pages[1]) lv_label_set_text(lv_obj_get_child(pages[1], 0), (btc_price + "\n" + btc_block + "\n" + btc_fees + "\n" + btc_hashrate).c_str());
+    if (pages[2]) lv_label_set_text(lv_obj_get_child(pages[2], 0), current_time.c_str());
+}
+
+lv_anim_t pulse_anim;
+void pulse_cb(void *var, int32_t v) {
+    lv_obj_set_style_border_opa((lv_obj_t *)var, v, 0);
+}
+void init_pulse(lv_obj_t *line) {
+    lv_anim_init(&pulse_anim);
+    lv_anim_set_var(&pulse_anim, line);
+    lv_anim_set_values(&pulse_anim, LV_OPA_MIN, LV_OPA_MAX);
+    lv_anim_set_time(&pulse_anim, 1000);
+    lv_anim_set_repeat_count(&pulse_anim, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_set_playback_time(&pulse_anim, 1000);
+    lv_anim_set_exec_cb(&pulse_anim, pulse_cb);
+    lv_anim_start(&pulse_anim);
+}
+
+static void gesture_event_cb(lv_event_t *e) {
+    (void)e;
+    lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+    if (dir == LV_DIR_LEFT) current_page = (current_page + 1) % NUM_PAGES;
+    if (dir == LV_DIR_RIGHT) current_page = (current_page - 1 + NUM_PAGES) % NUM_PAGES;
+    if (pages[current_page]) lv_obj_scroll_to_view(pages[current_page], LV_ANIM_ON);
+}
+
+// --- BH1750 (simple driver) and backlight control ---
+static const uint8_t BH1750_ADDR1 = 0x23;
+static const uint8_t BH1750_ADDR2 = 0x5C;
+static const uint8_t BH1750_CONT_HIGH_RES_MODE = 0x10;
+
+// LEDC PWM settings for backlight
+const int BL_PWM_CHANNEL = 0;
+const int BL_PWM_FREQ = 5000;
+const int BL_PWM_RES = 8; // 8-bit (0-255)
+
+// Try to initialize BH1750 on common addresses
+// Returns true when a BH1750 was found and initialized.
+bool init_bh1750() {
+    // Do not call Wire.begin() if SDA/SCL pins are invalid; caller must ensure pins are suitable.
+    ESP_LOGI(TAG, "Initializing BH1750 on SDA=%d SCL=%d", cfg_i2c_sda, cfg_i2c_scl);
+    Wire.begin(cfg_i2c_sda, cfg_i2c_scl);
+    // send continuous high-res mode to primary address; we'll attempt both
+    Wire.beginTransmission(BH1750_ADDR1);
+    Wire.write(BH1750_CONT_HIGH_RES_MODE);
+    if (Wire.endTransmission() == 0) {
+        ESP_LOGI(TAG, "BH1750: initialized at 0x23");
+        bh1750_present = true;
+        return true;
+    }
+    Wire.beginTransmission(BH1750_ADDR2);
+    Wire.write(BH1750_CONT_HIGH_RES_MODE);
+    if (Wire.endTransmission() == 0) {
+        ESP_LOGI(TAG, "BH1750: initialized at 0x5C");
+        bh1750_present = true;
+        return true;
+    }
+    ESP_LOGW(TAG, "BH1750: no sensor found at common addresses");
+    bh1750_present = false;
+    return false;
+}
+
+float read_bh1750() {
+    // Try addr1 then addr2
+    uint8_t addrs[2] = {BH1750_ADDR1, BH1750_ADDR2};
+    for (int a = 0; a < 2; ++a) {
+        uint8_t addr = addrs[a];
+        Wire.beginTransmission(addr);
+        Wire.write(BH1750_CONT_HIGH_RES_MODE);
+        if (Wire.endTransmission() != 0) continue;
+        delay(120);
+        Wire.requestFrom((int)addr, 2);
+        if (Wire.available() == 2) {
+            uint16_t raw = (Wire.read() << 8) | Wire.read();
+            float lux = raw / 1.2;
+            return lux;
+        }
+    }
+    return -1.0;
+}
+
+void init_backlight_pwm(int pin) {
+    if (pin < 0) return;
+    // attach PWM channel
+    ledcSetup(BL_PWM_CHANNEL, BL_PWM_FREQ, BL_PWM_RES);
+    ledcAttachPin(pin, BL_PWM_CHANNEL);
+    // start with moderate brightness
+    ledcWrite(BL_PWM_CHANNEL, 128);
+    ESP_LOGI(TAG, "Backlight PWM initialized on pin %d", pin);
+}
+
+void set_backlight_level(int pin, uint8_t duty) {
+    if (pin < 0) return;
+    ledcWrite(BL_PWM_CHANNEL, duty);
+}
+
+
+void setup() {
+    Serial.begin(115200);
+    ESP_LOGI(TAG, "Init Display Test Pattern");
+    delay(1000); // Give time for serial to initialize
+
+    // Load saved configuration and start portal if missing
+    load_config();
+    if (cfg_ssid.length() == 0) {
+        ESP_LOGI(TAG, "No WiFi config - starting portal");
+        startConfigPortal();
+        // after portal and restart, setup will run again with stored config
+    } else {
+        WiFi.mode(WIFI_STA);
+        WiFi.begin(cfg_ssid.c_str(), cfg_password.c_str());
+        uint32_t start = millis();
+        while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
+            delay(200);
+            Serial.print('.');
+        }
+        if (WiFi.status() != WL_CONNECTED) {
+            ESP_LOGW(TAG, "WiFi connect failed - starting config portal");
+            startConfigPortal();
+        } else {
+            ESP_LOGI(TAG, "WiFi connected: %s", WiFi.localIP().toString().c_str());
+        }
+    }
+
+    configTime(0, 0, "pool.ntp.org");
+
+    // If SAFE_MODE is enabled, avoid initializing the panel, I2C and backlight.
+#if SAFE_MODE
+    esp_reset_reason_t rr = esp_reset_reason();
+    ESP_LOGI(TAG, "SAFE_MODE enabled - skipping panel and I2C init");
+    ESP_LOGI(TAG, "Reset reason: %d", rr);
+    Serial.println("=== SAFE MODE: no panel, no I2C ===");
+    Serial.println("Press RESET to restart normal firmware (or re-flash)");
+
+    // Sit in a minimal loop so you can capture serial output and check stability.
+    while (1) {
+        Serial.println("SAFE MODE heartbeat...");
+        delay(1000);
+    }
+#endif
+
+    // Note: BH1750 initialization moved to after panel pin mapping to avoid I2C/panel pin conflicts.
+
+    esp_lcd_rgb_panel_config_t panel_rb_config = {};
+    panel_rb_config.clk_src = LCD_CLK_SRC_PLL160M;
+    // Reduced clock to 1MHz for stability testing
+    panel_rb_config.timings.pclk_hz = 1 * 1000000;
+    panel_rb_config.timings.h_res = 480;
+    panel_rb_config.timings.v_res = 272;
+    panel_rb_config.timings.hsync_pulse_width = 4;
+    panel_rb_config.timings.hsync_back_porch = 43;
+    panel_rb_config.timings.hsync_front_porch = 8;
+    panel_rb_config.timings.vsync_pulse_width = 4;
+    panel_rb_config.timings.vsync_back_porch = 12;
+    panel_rb_config.timings.vsync_front_porch = 8;
+    panel_rb_config.timings.flags.hsync_idle_low = true;
+    panel_rb_config.timings.flags.vsync_idle_low = true;
+    panel_rb_config.timings.flags.de_idle_high = false;
+    // Invert pclk polarity to try to fix white screen issue
+    panel_rb_config.timings.flags.pclk_active_neg = true;
+    panel_rb_config.timings.flags.pclk_idle_high = true;
+    panel_rb_config.data_width = 16;
+    panel_rb_config.sram_trans_align = 64;     // Increased alignment
+    panel_rb_config.psram_trans_align = 128;   // Increased alignment
+    panel_rb_config.hsync_gpio_num = (gpio_num_t)39;
+    panel_rb_config.vsync_gpio_num = (gpio_num_t)41;
+    panel_rb_config.de_gpio_num = (gpio_num_t)40;
+    panel_rb_config.pclk_gpio_num = (gpio_num_t)42;
+    panel_rb_config.disp_gpio_num = GPIO_NUM_NC;
+    for (int i = 0; i < 16; ++i) panel_rb_config.data_gpio_nums[i] = GPIO_NUM_NC; // will fill below
+    panel_rb_config.flags.disp_active_low = false;
+    panel_rb_config.flags.relax_on_idle = false;
+    // Use minimal configuration to ensure frame buffer fits in PSRAM
+    panel_rb_config.flags.fb_in_psram = true;
+    panel_rb_config.flags.relax_on_idle = true;
+    
+
+    // Data pins list (R0-R4, G0-G5, B0-B4)
+    int data_pins[16] = {
+        8, 3, 46, 9, 1,    // R0-R4
+        5, 6, 7, 15, 16, 4, // G0-G5 (6 entries)
+        45, 48, 47, 21, 14  // B0-B4 (48 may be invalid)
+    };
+
+    for (int i = 0; i < 16; ++i) {
+        if (GPIO_IS_VALID_GPIO(data_pins[i])) {
+            panel_rb_config.data_gpio_nums[i] = (gpio_num_t)data_pins[i];
+        } else {
+            ESP_LOGW(TAG, "data_gpio_nums[%d] (%d) invalid -> set to NC", i, data_pins[i]);
+            panel_rb_config.data_gpio_nums[i] = GPIO_NUM_NC;
+        }
+    }
+
+    if (!GPIO_IS_VALID_GPIO(panel_rb_config.hsync_gpio_num)) { ESP_LOGW(TAG, "hsync_gpio_num invalid"); panel_rb_config.hsync_gpio_num = GPIO_NUM_NC; }
+    if (!GPIO_IS_VALID_GPIO(panel_rb_config.vsync_gpio_num)) { ESP_LOGW(TAG, "vsync_gpio_num invalid"); panel_rb_config.vsync_gpio_num = GPIO_NUM_NC; }
+    if (!GPIO_IS_VALID_GPIO(panel_rb_config.de_gpio_num))    { ESP_LOGW(TAG, "de_gpio_num invalid");    panel_rb_config.de_gpio_num = GPIO_NUM_NC; }
+    if (!GPIO_IS_VALID_GPIO(panel_rb_config.pclk_gpio_num))  { ESP_LOGW(TAG, "pclk_gpio_num invalid");  panel_rb_config.pclk_gpio_num = GPIO_NUM_NC; }
+
+    ESP_ERROR_CHECK(esp_lcd_new_rgb_panel(&panel_rb_config, &panel_handle));
+    esp_err_t err;
+    err = esp_lcd_panel_reset(panel_handle);
+    if (err != ESP_OK) ESP_LOGE(TAG, "panel reset failed: 0x%X", err);
+    else ESP_LOGI(TAG, "panel reset OK");
+    err = esp_lcd_panel_init(panel_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "panel init failed: 0x%X", err);
+    } else {
+        ESP_LOGI(TAG, "panel init OK");
+
+        // Only try to toggle the DISP/backlight pin if configured.
+        // Some RGB panel drivers don't implement disp_on_off; handle that
+        // gracefully instead of aborting (ESP_ERROR_CHECK would abort).
+        if (panel_rb_config.disp_gpio_num != GPIO_NUM_NC) {
+            err = esp_lcd_panel_disp_on_off(panel_handle, true);
+            if (err == ESP_OK) {
+                ESP_LOGI(TAG, "panel display ON");
+            } else if (err == ESP_ERR_NOT_SUPPORTED) {
+                ESP_LOGW(TAG, "panel disp on/off not supported by driver (ignored)");
+            } else {
+                ESP_LOGE(TAG, "panel disp on failed: 0x%X", err);
+            }
+        } else {
+            ESP_LOGI(TAG, "disp_gpio_num NC — skipping esp_lcd_panel_disp_on_off");
+        }
+    }
+
+    // Configure a heartbeat pin if it's safe (don't use the backlight pin)
+    heartbeat_pin = -1;
+    if (cfg_bl_pin != 2 && GPIO_IS_VALID_GPIO(2)) {
+        // GPIO2 is commonly available as an on-board LED, but on this board it is TFT_BL.
+        // We only use it as heartbeat if it's not the configured backlight pin and not used by the panel.
+        bool usedByPanel = false;
+        for (int i = 0; i < 16; ++i) {
+            if (panel_rb_config.data_gpio_nums[i] == (gpio_num_t)2) usedByPanel = true;
+        }
+        if (!usedByPanel) {
+            heartbeat_pin = 2;
+            gpio_set_direction((gpio_num_t)heartbeat_pin, GPIO_MODE_OUTPUT);
+            gpio_set_level((gpio_num_t)heartbeat_pin, 1);
+        }
+    }
+
+    lv_init();
+
+    // Allocate buffers in internal RAM
+    static lv_color_t *buf1 = (lv_color_t *)heap_caps_malloc(480 * 10 * sizeof(lv_color_t), MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+    static lv_color_t *buf2 = (lv_color_t *)heap_caps_malloc(480 * 10 * sizeof(lv_color_t), MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+    if (!buf1 || !buf2) {
+        ESP_LOGE(TAG, "Failed to allocate LVGL buffers!");
+        if (buf1) heap_caps_free(buf1);
+        if (buf2) heap_caps_free(buf2);
+        return;
+    }
+    lv_display_t *disp = lv_display_create(480, 272);
+    lv_display_set_buffers(disp, buf1, buf2, 480 * 10, LV_DISPLAY_RENDER_MODE_PARTIAL);
+    lv_display_set_flush_cb(disp, flush_cb);
+    lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_0);
+
+    // Quick LVGL sanity label to ensure screen draws
+    lv_obj_t *dbg_label = lv_label_create(lv_scr_act());
+    lv_label_set_text(dbg_label, "DISPLAY TEST");
+    lv_obj_set_style_text_color(dbg_label, lv_color_hex(0xFF3333), 0);
+    lv_obj_align(dbg_label, LV_ALIGN_CENTER, 0, 0);
+    ESP_LOGI(TAG, "LVGL display object created");
+
+    // Print panel pin mapping for diagnostics
+    ESP_LOGI(TAG, "Panel control pins: hsync=%d vsync=%d de=%d pclk=%d disp=%d", panel_rb_config.hsync_gpio_num, panel_rb_config.vsync_gpio_num, panel_rb_config.de_gpio_num, panel_rb_config.pclk_gpio_num, panel_rb_config.disp_gpio_num);
+    ESP_LOGI(TAG, "Panel data pins:");
+    for (int i = 0; i < 16; ++i) {
+        ESP_LOGI(TAG, "  D[%d] = %d", i, panel_rb_config.data_gpio_nums[i]);
+    }
+
+    // Decide whether it's safe to initialize the BH1750 (avoid pin conflicts with panel)
+    // Use configured I2C pins (defaults are 19/20). Avoid conflicts with panel data and control pins.
+    int BH_SDA = cfg_i2c_sda;
+    int BH_SCL = cfg_i2c_scl;
+    bool sdaUsed = false;
+    bool sclUsed = false;
+    for (int i = 0; i < 16; ++i) {
+        if (panel_rb_config.data_gpio_nums[i] == (gpio_num_t)BH_SDA) sdaUsed = true;
+        if (panel_rb_config.data_gpio_nums[i] == (gpio_num_t)BH_SCL) sclUsed = true;
+    }
+    // Also check against control pins
+    if (panel_rb_config.hsync_gpio_num == (gpio_num_t)BH_SDA || panel_rb_config.vsync_gpio_num == (gpio_num_t)BH_SDA || panel_rb_config.de_gpio_num == (gpio_num_t)BH_SDA || panel_rb_config.pclk_gpio_num == (gpio_num_t)BH_SDA) sdaUsed = true;
+    if (panel_rb_config.hsync_gpio_num == (gpio_num_t)BH_SCL || panel_rb_config.vsync_gpio_num == (gpio_num_t)BH_SCL || panel_rb_config.de_gpio_num == (gpio_num_t)BH_SCL || panel_rb_config.pclk_gpio_num == (gpio_num_t)BH_SCL) sclUsed = true;
+#if ENABLE_I2C
+    if (!GPIO_IS_VALID_GPIO(BH_SDA) || !GPIO_IS_VALID_GPIO(BH_SCL)) {
+        ESP_LOGW(TAG, "BH1750 pins invalid for this board (SDA=%d SCL=%d) - skipping BH1750 init", BH_SDA, BH_SCL);
+    } else if (sdaUsed || sclUsed) {
+        ESP_LOGW(TAG, "BH1750 pins conflict with panel data pins (SDA used=%d SCL used=%d) - skipping BH1750 init", sdaUsed, sclUsed);
+    } else {
+        // Safe to init BH1750
+        init_bh1750();
+    }
+#else
+    ESP_LOGI(TAG, "I2C disabled by build flag (ENABLE_I2C=0) - skipping BH1750 init");
+#endif
+
+    // If user configured a backlight pin, initialize PWM
+#if ENABLE_BL
+    if (cfg_bl_pin >= 0) {
+        if (GPIO_IS_VALID_GPIO(cfg_bl_pin)) {
+            init_backlight_pwm(cfg_bl_pin);
+        } else {
+            ESP_LOGW(TAG, "Configured backlight pin %d is not a valid GPIO; ignoring", cfg_bl_pin);
+            cfg_bl_pin = -1;
+        }
+    }
+    // If configured, set up override button
+    if (cfg_btn_pin >= 0) {
+        if (GPIO_IS_VALID_GPIO(cfg_btn_pin)) {
+            pinMode(cfg_btn_pin, INPUT_PULLUP);
+            ESP_LOGI(TAG, "Override button on pin %d (pullup)", cfg_btn_pin);
+        } else {
+            ESP_LOGW(TAG, "Configured button pin %d is not a valid GPIO; ignoring", cfg_btn_pin);
+            cfg_btn_pin = -1;
+        }
+    }
+#else
+    ESP_LOGI(TAG, "Backlight disabled by build flag (ENABLE_BL=0) - skipping backlight and button init");
+#endif
+
+    lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), 0);
+
+    lv_obj_t *central = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(central, 400, 200);
+    lv_obj_center(central);
+    lv_obj_set_flex_flow(central, LV_FLEX_FLOW_ROW);
+    lv_obj_set_scroll_dir(central, LV_DIR_HOR);
+    lv_obj_set_scroll_snap_x(central, LV_SCROLL_SNAP_CENTER);
+    lv_obj_set_style_bg_color(central, lv_color_black(), 0);
+    lv_obj_set_style_border_color(central, lv_color_hex(0xFF0000), 0);
+    lv_obj_set_style_border_width(central, 2, 0);
+
+    for (int i = 0; i < NUM_PAGES; i++) {
+        pages[i] = lv_obj_create(central);
+        lv_obj_set_size(pages[i], 400, 200);
+        lv_obj_set_style_bg_color(pages[i], lv_color_black(), 0);
+        lv_obj_t *label = lv_label_create(pages[i]);
+        lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL);
+        lv_obj_set_style_text_color(label, lv_color_hex(0xFFA500), 0);
+        lv_obj_center(label);
+    }
+
+    lv_obj_t *periph_top = lv_label_create(lv_scr_act());
+    lv_label_set_text(periph_top, "Lamborghini Dashboard");
+    lv_obj_align(periph_top, LV_ALIGN_TOP_MID, 0, 10);
+    lv_obj_set_style_text_color(periph_top, lv_color_hex(0x808080), 0);
+
+    lv_obj_t *periph_bottom = lv_label_create(lv_scr_act());
+    lv_label_set_text(periph_bottom, "Swipe to switch central");
+    lv_obj_align(periph_bottom, LV_ALIGN_BOTTOM_MID, 0, -10);
+    lv_obj_set_style_text_color(periph_bottom, lv_color_hex(0x808080), 0);
+
+    static lv_point_precise_t left_points[] = {{50, 50}, {50, 222}};
+    lv_obj_t *line_left = lv_line_create(lv_scr_act());
+    lv_line_set_points(line_left, left_points, 2);
+    lv_obj_set_style_line_color(line_left, lv_color_hex(0xFF0000), 0);
+    lv_obj_set_style_line_width(line_left, 2, 0);
+    lv_obj_set_style_border_opa(line_left, LV_OPA_50, 0);
+    init_pulse(line_left);
+
+    static lv_point_precise_t right_points[] = {{430, 50}, {430, 222}};
+    lv_obj_t *line_right = lv_line_create(lv_scr_act());
+    lv_line_set_points(line_right, right_points, 2);
+    lv_obj_set_style_line_color(line_right, lv_color_hex(0xFF0000), 0);
+    lv_obj_set_style_line_width(line_right, 2, 0);
+    lv_obj_set_style_border_opa(line_right, LV_OPA_50, 0);
+    init_pulse(line_right);
+
+    lv_obj_add_event_cb(central, gesture_event_cb, LV_EVENT_GESTURE, NULL);
+
+    fetch_data();
+    update_ui();
+
+    // Startup diagnostics: print statuses, blink LED and show a simple label on screen
+    ESP_LOGI(TAG, "Config Bitaxe URL: %s", cfg_bitaxe_url.c_str());
+    ESP_LOGI(TAG, "WiFi status: %d", WiFi.status());
+    ESP_LOGI(TAG, "panel_handle: %p", panel_handle);
+
+    // Blink heartbeat quickly to show boot (if configured)
+    if (heartbeat_pin >= 0) {
+        for (int i = 0; i < 4; ++i) {
+            gpio_set_level((gpio_num_t)heartbeat_pin, i % 2);
+            delay(120);
+        }
+        gpio_set_level((gpio_num_t)heartbeat_pin, 1);
+    }
+
+    // One-shot read of ambient light and apply (only if BH1750 present)
+    if (cfg_bl_pin >= 0 && bh1750_present) {
+        float lux = read_bh1750();
+        if (lux >= 0) {
+            ESP_LOGI(TAG, "Ambient light: %.1f lux", lux);
+            // Map lux -> PWM (0..1000 lux -> 20..255)
+            int duty = (int)map((int)lux, 0, 1000, 20, 255);
+            duty = constrain(duty, 20, 255);
+            set_backlight_level(cfg_bl_pin, duty);
+            ESP_LOGI(TAG, "Backlight set to %d (from lux)", duty);
+        } else {
+            ESP_LOGW(TAG, "Ambient light read failed");
+        }
+    } else if (cfg_bl_pin >= 0 && !bh1750_present) {
+        ESP_LOGI(TAG, "BH1750 not present or not initialized — skipping ambient light auto backlight");
+    }
+
+    // Draw the initial test pattern
+    draw_test_pattern(panel_handle);
+}
+
+// Simple function to draw test pattern
+void draw_test_pattern(esp_lcd_panel_handle_t panel) {
+    const int width = 480;
+    const int height = 272;
+    const int bpp = 16; // RGB565 = 16 bits per pixel
+    size_t fb_size = width * height * bpp / 8;
+    
+    // Allocate frame buffer in PSRAM
+    uint16_t* fb = (uint16_t*)heap_caps_malloc(fb_size, MALLOC_CAP_PSRAM);
+    if (!fb) {
+        ESP_LOGE(TAG, "Failed to allocate frame buffer");
+        return;
+    }
+
+    // Fill with red/white stripes
+    for(int y = 0; y < height; y++) {
+        for(int x = 0; x < width; x++) {
+            // Create a pattern of vertical stripes
+            uint16_t color = (x < width/2) ? 0xF800 : 0xFFFF; // Red : White
+            fb[y * width + x] = color;
+        }
+    }
+
+    // Draw the pattern
+    esp_lcd_panel_draw_bitmap(panel, 0, 0, width, height, fb);
+    ESP_LOGI(TAG, "Test pattern drawn");
+
+    // Free the buffer
+    heap_caps_free(fb);
+}
+
+void loop() {
+    // Redraw test pattern periodically
+    static uint32_t last_draw = 0;
+    // Redraw test pattern every 5 seconds
+    if (millis() - last_draw > 5000) {
+        draw_test_pattern(panel_handle);
+        ESP_LOGI(TAG, "Pattern redrawn at %lu ms", millis());
+        last_draw = millis();
+    }
+    
+    // Let the CPU breathe
+    delay(100);
+}

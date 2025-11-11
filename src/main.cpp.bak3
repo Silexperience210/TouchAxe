@@ -1,0 +1,744 @@
+#include <Arduino.h>#include <Arduino.h>#include <Arduino.h>
+
+#include <esp_heap_caps.h>
+
+#include <esp_log.h>#include <esp_heap_caps.h>#include <esp32_smartdisplay.h>
+
+#include <esp_lcd_types.h>
+
+#include <esp_lcd_panel_rgb.h>#include <esp_log.h>#include <lvgl.h>
+
+#include <esp_lcd_panel_ops.h>
+
+#include <driver/gpio.h>#include <esp_lcd_types.h>#include "ui.h"
+
+#include <freertos/FreeRTOS.h>
+
+#include <freertos/task.h>#include <esp_lcd_panel_rgb.h>
+
+#include <lvgl.h>
+
+#include <Wire.h>#include <esp_lcd_panel_ops.h>// Smart Display instance
+
+#include "touch.h"
+
+#include <driver/gpio.h>Display display;
+
+static const char *TAG = "LVGL_TEST";
+
+static esp_lcd_panel_handle_t panel_handle = NULL;#include <freertos/FreeRTOS.h>
+
+static lv_display_t *display = NULL;
+
+static lv_color_t *buf1 = NULL;#include <freertos/task.h>// Event handler pour le bouton
+
+static lv_color_t *buf2 = NULL;  // Second buffer pour le double buffering
+
+#include <lvgl.h>static void btn_event_cb(lv_event_t *e) {
+
+// Event handler pour le bouton
+
+static void btn_event_cb(lv_event_t *e) {#include <Wire.h>    lv_event_code_t code = lv_event_get_code(e);
+
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_CLICKED) {#include "touch.h"    if(code == LV_EVENT_CLICKED) {
+
+        static uint8_t cnt = 0;
+
+        cnt++;        static uint8_t cnt = 0;
+
+        lv_obj_t *btn = (lv_obj_t *)lv_event_get_target(e);
+
+        lv_obj_t *label = lv_obj_get_child(btn, 0);#define TOUCH_I2C_SCL  10        cnt++;
+
+        char buf[32];
+
+        snprintf(buf, sizeof(buf), "Clicked %d", cnt);#define TOUCH_I2C_SDA  11        lv_obj_t *btn = (lv_obj_t *)lv_event_get_target(e);
+
+        lv_label_set_text(label, buf);
+
+    }        lv_obj_t *label = lv_obj_get_child(btn, 0);
+
+}
+
+TwoWire TouchWire = TwoWire(0);        char buf[32];
+
+// Fonction de flush LVGL vers l'écran LCD
+
+static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {        snprintf(buf, sizeof(buf), "Clicked %d", cnt);
+
+    esp_lcd_panel_draw_bitmap(panel_handle, area->x1, area->y1, area->x2 + 1, area->y2 + 1, px_map);
+
+    lv_display_flush_ready(disp);static const char *TAG = "LVGL_TEST";        lv_label_set_text(label, buf);
+
+}
+
+static esp_lcd_panel_handle_t panel_handle = NULL;    }
+
+// Configuration de l'écran LCD
+
+void setup_lcd() {static lv_display_t *display = NULL;}
+
+    esp_lcd_rgb_panel_config_t panel_config = {};
+
+    panel_config.clk_src = LCD_CLK_SRC_PLL160M;      // PLL pour haute fréquence stablestatic lv_color_t *buf1 = NULL;
+
+    panel_config.timings.pclk_hz = 12 * 1000000;        // 12MHz pour plus de stabilité
+
+    panel_config.timings.h_res = LV_HOR_RES_MAX;static lv_color_t *buf2 = NULL;  // Second buffer pour le double buffering// Fonction de flush LVGL vers l'écran LCD
+
+    panel_config.timings.v_res = LV_VER_RES_MAX;
+
+    panel_config.timings.hsync_pulse_width = 8;          static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
+
+    panel_config.timings.hsync_back_porch = 32;         
+
+    panel_config.timings.hsync_front_porch = 8;          // Event handler pour le bouton    esp_lcd_panel_draw_bitmap(panel_handle, area->x1, area->y1, area->x2 + 1, area->y2 + 1, px_map);
+
+    panel_config.timings.vsync_pulse_width = 8;          
+
+    panel_config.timings.vsync_back_porch = 12;         static void btn_event_cb(lv_event_t *e) {    lv_display_flush_ready(disp);
+
+    panel_config.timings.vsync_front_porch = 8;         
+
+        lv_event_code_t code = lv_event_get_code(e);}
+
+    // Configuration DMA
+
+    panel_config.flags.fb_in_psram = true;                  if(code == LV_EVENT_CLICKED) {
+
+    panel_config.flags.relax_on_idle = true;            
+
+    panel_config.timings.flags.hsync_idle_low = false;          static uint8_t cnt = 0;// Configuration de l'écran LCD
+
+    panel_config.timings.flags.vsync_idle_low = false;  
+
+    panel_config.timings.flags.de_idle_high = true;             cnt++;void setup_lcd() {
+
+    panel_config.timings.flags.pclk_active_neg = false;  
+
+    panel_config.timings.flags.pclk_idle_high = true;           lv_obj_t *btn = (lv_obj_t *)lv_event_get_target(e);    esp_lcd_rgb_panel_config_t panel_config = {};
+
+    panel_config.data_width = 16;
+
+    panel_config.sram_trans_align = 64;                         lv_obj_t *label = lv_obj_get_child(btn, 0);    panel_config.clk_src = LCD_CLK_SRC_PLL160M;      // PLL pour haute fréquence stable
+
+    panel_config.psram_trans_align = 64;                
+
+            char buf[32];    panel_config.timings.pclk_hz = 10 * 1000000;        // 10MHz - poussé au maximum stable
+
+    panel_config.hsync_gpio_num = (gpio_num_t)39;
+
+    panel_config.vsync_gpio_num = (gpio_num_t)41;        snprintf(buf, sizeof(buf), "Clicked %d", cnt);    panel_config.timings.h_res = LV_HOR_RES_MAX;
+
+    panel_config.de_gpio_num = GPIO_NUM_NC;
+
+    panel_config.pclk_gpio_num = (gpio_num_t)42;        lv_label_set_text(label, buf);    panel_config.timings.v_res = LV_VER_RES_MAX;
+
+    panel_config.data_gpio_nums[0] = (gpio_num_t)8;      // R0
+
+    panel_config.data_gpio_nums[1] = (gpio_num_t)3;      // R1    }    panel_config.timings.hsync_pulse_width = 8;          // Légèrement augmenté pour stabilité à 10MHz
+
+    panel_config.data_gpio_nums[2] = (gpio_num_t)46;     // R2
+
+    panel_config.data_gpio_nums[3] = (gpio_num_t)9;      // R3}    panel_config.timings.hsync_back_porch = 32;          // Réduit au minimum stable
+
+    panel_config.data_gpio_nums[4] = (gpio_num_t)1;      // R4
+
+    panel_config.data_gpio_nums[5] = (gpio_num_t)5;      // G0    panel_config.timings.hsync_front_porch = 8;          // Légèrement augmenté pour stabilité à 10MHz
+
+    panel_config.data_gpio_nums[6] = (gpio_num_t)6;      // G1
+
+    panel_config.data_gpio_nums[7] = (gpio_num_t)7;      // G2// Fonction de flush LVGL vers l'écran LCD    panel_config.timings.vsync_pulse_width = 8;          // Légèrement augmenté pour stabilité à 10MHz
+
+    panel_config.data_gpio_nums[8] = (gpio_num_t)15;     // G3
+
+    panel_config.data_gpio_nums[9] = (gpio_num_t)16;     // G4static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {    panel_config.timings.vsync_back_porch = 12;          // Réduit au minimum stable
+
+    panel_config.data_gpio_nums[10] = (gpio_num_t)4;     // G5
+
+    panel_config.data_gpio_nums[11] = (gpio_num_t)45;    // B0    esp_lcd_panel_draw_bitmap(panel_handle, area->x1, area->y1, area->x2 + 1, area->y2 + 1, px_map);    panel_config.timings.vsync_front_porch = 8;         // Augmenté pour stabilité
+
+    panel_config.data_gpio_nums[12] = (gpio_num_t)48;    // B1
+
+    panel_config.data_gpio_nums[13] = (gpio_num_t)47;    // B2    lv_display_flush_ready(disp);    
+
+    panel_config.data_gpio_nums[14] = (gpio_num_t)21;    // B3
+
+    panel_config.data_gpio_nums[15] = (gpio_num_t)14;    // B4}    // Configuration DMA optimisée
+
+    
+
+    panel_config.disp_gpio_num = GPIO_NUM_NC;    panel_config.flags.fb_in_psram = true;               // Frame buffer in PSRAM
+
+    panel_config.flags.fb_in_psram = true;
+
+    panel_config.flags.relax_on_idle = true;// Configuration de l'écran LCD    panel_config.flags.relax_on_idle = true;            // Allow LCD to relax
+
+
+
+    ESP_LOGI(TAG, "Initializing LCD panel...");void setup_lcd() {    panel_config.timings.flags.hsync_idle_low = false;   // Inversé
+
+    esp_err_t ret = esp_lcd_new_rgb_panel(&panel_config, &panel_handle);
+
+    if (ret != ESP_OK) {    esp_lcd_rgb_panel_config_t panel_config = {};    panel_config.timings.flags.vsync_idle_low = false;   // Inversé
+
+        ESP_LOGE(TAG, "Panel init failed: 0x%x", ret);
+
+        return;    panel_config.clk_src = LCD_CLK_SRC_PLL160M;      // PLL pour haute fréquence stable    panel_config.timings.flags.de_idle_high = true;     // Inversé
+
+    }
+
+    panel_config.timings.pclk_hz = 12 * 1000000;        // 12MHz pour plus de stabilité    panel_config.timings.flags.pclk_active_neg = false;  // Polarité positive
+
+    ret = esp_lcd_panel_reset(panel_handle);
+
+    if (ret != ESP_OK) {    panel_config.timings.h_res = LV_HOR_RES_MAX;    panel_config.timings.flags.pclk_idle_high = true;   // Clock idle high
+
+        ESP_LOGE(TAG, "Panel reset failed: 0x%x", ret);
+
+        return;    panel_config.timings.v_res = LV_VER_RES_MAX;    panel_config.data_width = 16;
+
+    }
+
+    panel_config.timings.hsync_pulse_width = 8;              panel_config.sram_trans_align = 64;                 // Retour à 64 bytes
+
+    ret = esp_lcd_panel_init(panel_handle);
+
+    if (ret != ESP_OK) {    panel_config.timings.hsync_back_porch = 32;             panel_config.psram_trans_align = 64;                 // Plus petit pour moins de latence
+
+        ESP_LOGE(TAG, "Panel init failed: 0x%x", ret);
+
+        return;    panel_config.timings.hsync_front_porch = 8;              
+
+    }
+
+    panel_config.timings.vsync_pulse_width = 8;              panel_config.hsync_gpio_num = (gpio_num_t)39;
+
+    // Initialize backlight
+
+    const int BACKLIGHT_PIN = 2;    panel_config.timings.vsync_back_porch = 12;             panel_config.vsync_gpio_num = (gpio_num_t)41;
+
+    ESP_LOGI(TAG, "Initializing backlight on GPIO%d", BACKLIGHT_PIN);
+
+    pinMode(BACKLIGHT_PIN, OUTPUT);    panel_config.timings.vsync_front_porch = 8;             panel_config.de_gpio_num = GPIO_NUM_NC;
+
+    digitalWrite(BACKLIGHT_PIN, HIGH);
+
+    ESP_LOGI(TAG, "Backlight enabled");        panel_config.pclk_gpio_num = (gpio_num_t)42;
+
+}
+
+    // Configuration DMA    panel_config.data_gpio_nums[0] = (gpio_num_t)8;      // R0
+
+// Configuration de LVGL
+
+void setup_lvgl() {    panel_config.flags.fb_in_psram = true;                  panel_config.data_gpio_nums[1] = (gpio_num_t)3;      // R1
+
+    ESP_LOGI(TAG, "Setting up LVGL");
+
+        panel_config.flags.relax_on_idle = true;                panel_config.data_gpio_nums[2] = (gpio_num_t)46;     // R2
+
+    lv_init();
+
+        panel_config.timings.flags.hsync_idle_low = false;      panel_config.data_gpio_nums[3] = (gpio_num_t)9;      // R3
+
+    // Buffer plein écran pour éviter les artefacts
+
+    size_t buf_size = LV_HOR_RES_MAX * LV_VER_RES_MAX;  // Buffer plein écran    panel_config.timings.flags.vsync_idle_low = false;      panel_config.data_gpio_nums[4] = (gpio_num_t)1;      // R4
+
+    buf1 = (lv_color_t *)heap_caps_aligned_calloc(64, 1, buf_size * sizeof(lv_color_t), MALLOC_CAP_SPIRAM);
+
+    buf2 = (lv_color_t *)heap_caps_aligned_calloc(64, 1, buf_size * sizeof(lv_color_t), MALLOC_CAP_SPIRAM);    panel_config.timings.flags.de_idle_high = true;         panel_config.data_gpio_nums[5] = (gpio_num_t)5;      // G0
+
+    
+
+    if (!buf1 || !buf2) {    panel_config.timings.flags.pclk_active_neg = false;      panel_config.data_gpio_nums[6] = (gpio_num_t)6;      // G1
+
+        ESP_LOGE(TAG, "Failed to allocate LVGL buffers!");
+
+        return;    panel_config.timings.flags.pclk_idle_high = true;       panel_config.data_gpio_nums[7] = (gpio_num_t)7;      // G2
+
+    }
+
+    ESP_LOGI(TAG, "Display buffers allocated in PSRAM");    panel_config.data_width = 16;    panel_config.data_gpio_nums[8] = (gpio_num_t)15;     // G3
+
+    
+
+    // Créer l'affichage LVGL    panel_config.sram_trans_align = 64;                     panel_config.data_gpio_nums[9] = (gpio_num_t)16;     // G4
+
+    display = lv_display_create(LV_HOR_RES_MAX, LV_VER_RES_MAX);
+
+    if (!display) {    panel_config.psram_trans_align = 64;                    panel_config.data_gpio_nums[10] = (gpio_num_t)4;     // G5
+
+        ESP_LOGE(TAG, "LVGL display creation failed!");
+
+        return;        panel_config.data_gpio_nums[11] = (gpio_num_t)45;    // B0
+
+    }
+
+        panel_config.hsync_gpio_num = (gpio_num_t)39;    panel_config.data_gpio_nums[12] = (gpio_num_t)48;    // B1
+
+    // Configurer l'affichage avec double buffering complet
+
+    lv_display_set_buffers(display, buf1, buf2, buf_size * sizeof(lv_color_t), LV_DISPLAY_RENDER_MODE_FULL);    panel_config.vsync_gpio_num = (gpio_num_t)41;    panel_config.data_gpio_nums[13] = (gpio_num_t)47;    // B2
+
+    lv_display_set_flush_cb(display, lvgl_flush_cb);
+
+        panel_config.de_gpio_num = GPIO_NUM_NC;    panel_config.data_gpio_nums[14] = (gpio_num_t)21;    // B3
+
+    ESP_LOGI(TAG, "LVGL display driver registered");
+
+}    panel_config.pclk_gpio_num = (gpio_num_t)42;    panel_config.data_gpio_nums[15] = (gpio_num_t)14;    // B4
+
+
+
+// Créer un écran de test LVGL    panel_config.data_gpio_nums[0] = (gpio_num_t)8;      // R0    
+
+void create_gui() {
+
+    ESP_LOGI(TAG, "Creating GUI elements");    panel_config.data_gpio_nums[1] = (gpio_num_t)3;      // R1    panel_config.disp_gpio_num = GPIO_NUM_NC;
+
+    
+
+    // Créer un écran    panel_config.data_gpio_nums[2] = (gpio_num_t)46;     // R2    panel_config.flags.fb_in_psram = true;
+
+    lv_obj_t *scr = lv_scr_act();
+
+    lv_obj_set_style_bg_color(scr, lv_color_hex(0x003060), LV_PART_MAIN | LV_STATE_DEFAULT);    panel_config.data_gpio_nums[3] = (gpio_num_t)9;      // R3    panel_config.flags.relax_on_idle = true;
+
+    
+
+    // Créer un label avec une police plus grande    panel_config.data_gpio_nums[4] = (gpio_num_t)1;      // R4
+
+    lv_obj_t *label = lv_label_create(scr);
+
+    lv_label_set_text(label, "TouchAxe v1.0");    panel_config.data_gpio_nums[5] = (gpio_num_t)5;      // G0    ESP_LOGI(TAG, "Initializing LCD panel...");
+
+    lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);    panel_config.data_gpio_nums[6] = (gpio_num_t)6;      // G1    esp_err_t ret = esp_lcd_new_rgb_panel(&panel_config, &panel_handle);
+
+    lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 20);
+
+        panel_config.data_gpio_nums[7] = (gpio_num_t)7;      // G2    if (ret != ESP_OK) {
+
+    // Créer un bouton
+
+    lv_obj_t *btn = lv_btn_create(scr);    panel_config.data_gpio_nums[8] = (gpio_num_t)15;     // G3        ESP_LOGE(TAG, "Panel init failed: 0x%x", ret);
+
+    lv_obj_set_size(btn, 200, 50);
+
+    lv_obj_align(btn, LV_ALIGN_CENTER, 0, 0);    panel_config.data_gpio_nums[9] = (gpio_num_t)16;     // G4        return;
+
+    lv_obj_add_event_cb(btn, btn_event_cb, LV_EVENT_CLICKED, NULL);
+
+        panel_config.data_gpio_nums[10] = (gpio_num_t)4;     // G5    }
+
+    lv_obj_t *btn_label = lv_label_create(btn);
+
+    lv_label_set_text(btn_label, "Click me!");    panel_config.data_gpio_nums[11] = (gpio_num_t)45;    // B0
+
+    lv_obj_center(btn_label);
+
+        panel_config.data_gpio_nums[12] = (gpio_num_t)48;    // B1    ret = esp_lcd_panel_reset(panel_handle);
+
+    ESP_LOGI(TAG, "GUI elements created");
+
+}    panel_config.data_gpio_nums[13] = (gpio_num_t)47;    // B2    if (ret != ESP_OK) {
+
+
+
+// Touch read callback pour LVGL    panel_config.data_gpio_nums[14] = (gpio_num_t)21;    // B3        ESP_LOGE(TAG, "Panel reset failed: 0x%x", ret);
+
+static void touchpad_read(lv_indev_drv_t * drv, lv_indev_data_t * data) {
+
+    uint16_t x = 0, y = 0;    panel_config.data_gpio_nums[15] = (gpio_num_t)14;    // B4        return;
+
+    uint8_t pressure = 0;
+
+            }
+
+    Touch* touch = Touch::getInstance();
+
+    bool touched = touch->readTouch(&x, &y, &pressure);    panel_config.disp_gpio_num = GPIO_NUM_NC;
+
+    
+
+    if(touched) {    panel_config.flags.fb_in_psram = true;    ret = esp_lcd_panel_init(panel_handle);
+
+        data->state = LV_INDEV_STATE_PRESSED;
+
+        data->point.x = x;    panel_config.flags.relax_on_idle = true;    if (ret != ESP_OK) {
+
+        data->point.y = y;
+
+    } else {        ESP_LOGE(TAG, "Panel init failed: 0x%x", ret);
+
+        data->state = LV_INDEV_STATE_RELEASED;
+
+    }    ESP_LOGI(TAG, "Initializing LCD panel...");        return;
+
+}
+
+    esp_err_t ret = esp_lcd_new_rgb_panel(&panel_config, &panel_handle);    }
+
+static void setup_touch() {
+
+    Touch* touch = Touch::getInstance();    if (ret != ESP_OK) {
+
+    touch->init(11, 10);  // SDA = 11, SCL = 10
+
+            ESP_LOGE(TAG, "Panel init failed: 0x%x", ret);    // Initialize backlight
+
+    static lv_indev_drv_t indev_drv;
+
+    lv_indev_drv_init(&indev_drv);        return;    const int BACKLIGHT_PIN = 2;
+
+    indev_drv.type = LV_INDEV_TYPE_POINTER;
+
+    indev_drv.read_cb = touchpad_read;    }    ESP_LOGI(TAG, "Initializing backlight on GPIO%d", BACKLIGHT_PIN);
+
+    lv_indev_drv_register(&indev_drv);
+
+        pinMode(BACKLIGHT_PIN, OUTPUT);
+
+    ESP_LOGI(TAG, "Touch panel initialized");
+
+}    ret = esp_lcd_panel_reset(panel_handle);    digitalWrite(BACKLIGHT_PIN, HIGH);
+
+
+
+void setup() {    if (ret != ESP_OK) {    ESP_LOGI(TAG, "Backlight enabled");
+
+    Serial.begin(115200);
+
+    ESP_LOGI(TAG, "Starting setup");        ESP_LOGE(TAG, "Panel reset failed: 0x%x", ret);}
+
+    
+
+    setup_lcd();        return;
+
+    delay(100);  // Attendre que l'écran se stabilise
+
+        }// Configuration de LVGL
+
+    setup_lvgl();
+
+    setup_touch();  // Initialiser le touch panelvoid setup_lvgl() {
+
+    create_gui();
+
+}    ret = esp_lcd_panel_init(panel_handle);    ESP_LOGI(TAG, "Setting up LVGL");
+
+
+
+void loop() {    if (ret != ESP_OK) {    
+
+    lv_timer_handler();
+
+    delay(5);        ESP_LOGE(TAG, "Panel init failed: 0x%x", ret);    lv_init();
+
+}
+        return;    
+
+    }    // Buffer plein écran pour éviter les artefacts
+
+    size_t buf_size = LV_HOR_RES_MAX * LV_VER_RES_MAX;  // Buffer plein écran
+
+    // Initialize backlight    buf1 = (lv_color_t *)heap_caps_aligned_calloc(64, 1, buf_size * sizeof(lv_color_t), MALLOC_CAP_SPIRAM);
+
+    const int BACKLIGHT_PIN = 2;    buf2 = (lv_color_t *)heap_caps_aligned_calloc(64, 1, buf_size * sizeof(lv_color_t), MALLOC_CAP_SPIRAM);
+
+    ESP_LOGI(TAG, "Initializing backlight on GPIO%d", BACKLIGHT_PIN);    
+
+    pinMode(BACKLIGHT_PIN, OUTPUT);    if (!buf1 || !buf2) {
+
+    digitalWrite(BACKLIGHT_PIN, HIGH);        ESP_LOGE(TAG, "Failed to allocate LVGL buffers!");
+
+    ESP_LOGI(TAG, "Backlight enabled");        return;
+
+}    }
+
+    ESP_LOGI(TAG, "Display buffers allocated in PSRAM");
+
+// Configuration de LVGL    
+
+void setup_lvgl() {    // Créer l'affichage LVGL
+
+    ESP_LOGI(TAG, "Setting up LVGL");    display = lv_display_create(LV_HOR_RES_MAX, LV_VER_RES_MAX);
+
+        if (!display) {
+
+    lv_init();        ESP_LOGE(TAG, "LVGL display creation failed!");
+
+            return;
+
+    // Buffer plein écran pour éviter les artefacts    }
+
+    size_t buf_size = LV_HOR_RES_MAX * LV_VER_RES_MAX;  // Buffer plein écran    
+
+    buf1 = (lv_color_t *)heap_caps_aligned_calloc(64, 1, buf_size * sizeof(lv_color_t), MALLOC_CAP_SPIRAM);    // Configurer l'affichage avec double buffering complet pour plus de stabilité
+
+    buf2 = (lv_color_t *)heap_caps_aligned_calloc(64, 1, buf_size * sizeof(lv_color_t), MALLOC_CAP_SPIRAM);    lv_display_set_buffers(display, buf1, buf2, buf_size * sizeof(lv_color_t), LV_DISPLAY_RENDER_MODE_FULL);
+
+        lv_display_set_flush_cb(display, lvgl_flush_cb);
+
+    if (!buf1 || !buf2) {    lv_display_set_color_format(display, LV_COLOR_FORMAT_RGB565);
+
+        ESP_LOGE(TAG, "Failed to allocate LVGL buffers!");    lv_display_set_antialiasing(display, true);  // Réactive l'antialiasing
+
+        return;    
+
+    }    ESP_LOGI(TAG, "LVGL display driver registered");
+
+    ESP_LOGI(TAG, "Display buffers allocated in PSRAM");}
+
+    
+
+    // Créer l'affichage LVGL// Créer un écran de test LVGL
+
+    display = lv_display_create(LV_HOR_RES_MAX, LV_VER_RES_MAX);void create_gui() {
+
+    if (!display) {    ESP_LOGI(TAG, "Creating GUI elements");
+
+        ESP_LOGE(TAG, "LVGL display creation failed!");    
+
+        return;    // Créer un écran
+
+    }    lv_obj_t *scr = lv_scr_act();
+
+        lv_obj_set_style_bg_color(scr, lv_color_hex(0x003060), LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    // Configurer l'affichage avec double buffering complet    
+
+    lv_display_set_buffers(display, buf1, buf2, buf_size * sizeof(lv_color_t), LV_DISPLAY_RENDER_MODE_FULL);    // Créer un label avec une police plus grande
+
+    lv_display_set_flush_cb(display, lvgl_flush_cb);    lv_obj_t *label = lv_label_create(scr);
+
+        lv_label_set_text(label, "TouchAxe v1.0");
+
+    ESP_LOGI(TAG, "LVGL display driver registered");    lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+
+}    lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
+
+    lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 20);
+
+// Créer un écran de test LVGL    
+
+void create_gui() {    // Créer un arc animé
+
+    ESP_LOGI(TAG, "Creating GUI elements");    lv_obj_t *arc = lv_arc_create(scr);
+
+        lv_obj_set_size(arc, 150, 150);
+
+    // Créer un écran    lv_arc_set_rotation(arc, 270);
+
+    lv_obj_t *scr = lv_scr_act();    lv_arc_set_bg_angles(arc, 0, 360);
+
+    lv_obj_set_style_bg_color(scr, lv_color_hex(0x003060), LV_PART_MAIN | LV_STATE_DEFAULT);    lv_arc_set_value(arc, 70);
+
+        lv_obj_center(arc);
+
+    // Créer un label avec une police plus grande    
+
+    lv_obj_t *label = lv_label_create(scr);    // Animation de l'arc - vitesse optimale
+
+    lv_label_set_text(label, "TouchAxe v1.0");    lv_anim_t a;
+
+    lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);    lv_anim_init(&a);
+
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);    lv_anim_set_var(&a, arc);
+
+    lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 20);    lv_anim_set_exec_cb(&a, (lv_anim_exec_xcb_t)lv_arc_set_value);
+
+        lv_anim_set_time(&a, 700);   // Animation encore plus rapide (0.7 seconde)
+
+    // Créer un bouton    lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
+
+    lv_obj_t *btn = lv_btn_create(scr);    lv_anim_set_repeat_delay(&a, 0);
+
+    lv_obj_set_size(btn, 200, 50);    lv_anim_set_values(&a, 0, 100);
+
+    lv_obj_align(btn, LV_ALIGN_CENTER, 0, 0);    lv_anim_set_early_apply(&a, true);  // Applique les changements immédiatement
+
+    lv_obj_add_event_cb(btn, btn_event_cb, LV_EVENT_CLICKED, NULL);    lv_anim_set_path_cb(&a, lv_anim_path_linear); // Animation linéaire pour plus de fluidité
+
+        lv_anim_start(&a);
+
+    lv_obj_t *btn_label = lv_label_create(btn);    
+
+    lv_label_set_text(btn_label, "Click me!");    // Créer un bouton avec effets de style
+
+    lv_obj_center(btn_label);    lv_obj_t *btn = lv_btn_create(scr);
+
+        lv_obj_set_size(btn, 200, 50);
+
+    ESP_LOGI(TAG, "GUI elements created");    lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -20);
+
+}    lv_obj_add_event_cb(btn, btn_event_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_set_style_bg_color(btn, lv_color_hex(0x1E90FF), LV_PART_MAIN | LV_STATE_DEFAULT);
+
+// Touch read callback pour LVGL    lv_obj_set_style_bg_opa(btn, LV_OPA_100, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+static void touchpad_read(lv_indev_drv_t * drv, lv_indev_data_t * data) {    lv_obj_set_style_shadow_width(btn, 10, 0);
+
+    uint16_t x = 0, y = 0;    lv_obj_set_style_shadow_color(btn, lv_color_hex(0x1E90FF), 0);
+
+    uint8_t pressure = 0;    
+
+        lv_obj_t *btn_label = lv_label_create(btn);
+
+    Touch* touch = Touch::getInstance();    lv_label_set_text(btn_label, "Click me!");
+
+    bool touched = touch->readTouch(&x, &y, &pressure);    lv_obj_center(btn_label);
+
+        
+
+    if(touched) {    ESP_LOGI(TAG, "GUI elements created");
+
+        data->state = LV_INDEV_STATE_PRESSED;}
+
+        data->point.x = x;
+
+        data->point.y = y;// Gestionnaire de ticks pour LVGL
+
+    } else {// Touch read callback pour LVGL
+
+        data->state = LV_INDEV_STATE_RELEASED;static void touchpad_read(lv_indev_t * indev, lv_indev_data_t * data) {
+
+    }    static uint16_t last_x = 0, last_y = 0;
+
+}    uint8_t touch_pnt;
+
+    
+
+static void setup_touch() {    // Lire le registre de statut
+
+    Touch* touch = Touch::getInstance();    TouchWire.beginTransmission(TOUCH_ADDR);
+
+    touch->init(TOUCH_I2C_SDA, TOUCH_I2C_SCL);    TouchWire.write(0x02);  // Registre de statut
+
+        if (TouchWire.endTransmission(false) != 0) {
+
+    static lv_indev_drv_t indev_drv;        data->state = LV_INDEV_STATE_RELEASED;
+
+    lv_indev_drv_init(&indev_drv);        return;
+
+    indev_drv.type = LV_INDEV_TYPE_POINTER;    }
+
+    indev_drv.read_cb = touchpad_read;    
+
+    lv_indev_drv_register(&indev_drv);    if (TouchWire.requestFrom(TOUCH_ADDR, 1) != 1) {
+
+            data->state = LV_INDEV_STATE_RELEASED;
+
+    ESP_LOGI(TAG, "Touch panel initialized");        return;
+
+}    }
+
+    
+
+void setup() {    touch_pnt = TouchWire.read();
+
+    Serial.begin(115200);    bool touched = ((touch_pnt & 0x0F) > 0);
+
+    ESP_LOGI(TAG, "Starting setup");    
+
+        if (!touched) {
+
+    setup_lcd();        data->state = LV_INDEV_STATE_RELEASED;
+
+    delay(100);  // Attendre que l'écran se stabilise        data->point.x = last_x;
+
+            data->point.y = last_y;
+
+    setup_lvgl();        return;
+
+    setup_touch();  // Initialiser le touch panel    }
+
+    create_gui();    
+
+}    // Lire les coordonnées
+
+    TouchWire.beginTransmission(TOUCH_ADDR);
+
+void loop() {    TouchWire.write(0x03);  // Premier point de contact
+
+    lv_timer_handler();    if (TouchWire.endTransmission(false) != 0) {
+
+    delay(5);        data->state = LV_INDEV_STATE_RELEASED;
+
+}        return;
+    }
+    
+    if (TouchWire.requestFrom(TOUCH_ADDR, 4) != 4) {
+        data->state = LV_INDEV_STATE_RELEASED;
+        return;
+    }
+    
+    uint8_t touch_data[4];
+    for(int i=0; i<4; i++) {
+        touch_data[i] = TouchWire.read();
+    }
+    
+    // FT6236 est en mode paysage par défaut, donc on inverse x et y
+    last_y = ((touch_data[0] & 0x0F) << 8) | touch_data[1];
+    last_x = ((touch_data[2] & 0x0F) << 8) | touch_data[3];
+    
+    // Les coordonnées sont dans le bon sens pour l'écran
+    data->point.x = last_x;
+    data->point.y = last_y;
+    data->state = LV_INDEV_STATE_PRESSED;
+    
+    Serial.printf("Touch: %d,%d\n", last_x, last_y);
+}
+
+static void setup_touch() {
+    // Active les pull-up internes et utilise une fréquence plus basse
+    TouchWire.begin(TOUCH_I2C_SDA, TOUCH_I2C_SCL, 100000);
+    pinMode(TOUCH_I2C_SDA, INPUT_PULLUP);
+    pinMode(TOUCH_I2C_SCL, INPUT_PULLUP);
+    delay(50); // Attendre la stabilisation
+    
+    // Configurer le touch panel pour LVGL
+    static lv_indev_t * touch_indev = lv_indev_create();
+    lv_indev_set_type(touch_indev, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_read_cb(touch_indev, touchpad_read);
+    
+    ESP_LOGI(TAG, "Touch panel initialized");
+}
+
+static bool lv_tick_handler(void*) {
+    lv_tick_inc(portTICK_PERIOD_MS);
+    return true;
+}
+
+void setup() {
+    Serial.begin(115200);
+    Serial.println("Initializing...");
+
+    // Initialize display with GT911 support
+    display.begin();
+    Serial.println("Display initialized");
+    
+    // Create test GUI (you can remove this later)
+    lv_obj_t *btn = lv_btn_create(lv_scr_act());
+    lv_obj_center(btn);
+    lv_obj_set_size(btn, 200, 50);
+    lv_obj_add_event_cb(btn, btn_event_cb, LV_EVENT_CLICKED, NULL);
+    
+    lv_obj_t *label = lv_label_create(btn);
+    lv_label_set_text(label, "Click me!");
+    lv_obj_center(label);
+    
+    Serial.println("Setup completed");
+}
+
+void loop() {
+    // Let the smart display library handle everything
+    display.loop();
+    delay(5);
+}
