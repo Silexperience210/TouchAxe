@@ -6,7 +6,7 @@
     <title>TouchAxe - Swarm Thermostat & Bitcoin Miner Dashboard</title>
     <meta name="description" content="TouchAxe: Open-source touchscreen thermostat for BitAxe miners. Monitor, control, and heat your swarm with fire.">
 
-    <!-- ANGEL WISH .TTF depuis assets/fonts -->
+    <!-- ANGEL WISH .TTF -->
     <style>
         @font-face {
             font-family: 'Angel Wish';
@@ -17,7 +17,7 @@
         }
     </style>
 
-    <!-- Fallback si .ttf échoue -->
+    <!-- Fallback -->
     <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap" rel="stylesheet">
 
     <!-- ESP Web Tools -->
@@ -32,16 +32,11 @@
             --card-bg: #111111;
             --text-primary: #ffffff;
             --text-secondary: #ff8c66;
-            --neon-fire: 0 0 30px rgba(255, 85, 0, 0.7);
-            --anarchy-red: #ff0000;
-            --anarchy-glow: 0 0 25px rgba(255, 0, 0, 0.8);
+            --neon-fire: 0 0 40px rgba(255, 85, 0, 0.8);
+            --neon-red: 0 0 35px rgba(255, 0, 0, 0.9), 0 0 60px rgba(255, 0, 0, 0.6);
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Courier New', monospace;
@@ -56,34 +51,24 @@
                 radial-gradient(circle at 80% 90%, rgba(255, 85, 0, 0.12) 0%, transparent 50%);
         }
 
-        /* === BRAISES ANIMÉES (subtiles) === */
+        /* === BRAISES === */
         .fire-embers {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 1;
-            overflow: hidden;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 1; overflow: hidden;
         }
-
         .ember {
-            position: absolute;
-            width: 4px; height: 4px;
+            position: absolute; width: 4px; height: 4px;
             background: radial-gradient(circle, #ff9500 0%, #ff5500 50%, #ff0000 100%);
-            border-radius: 50%;
-            box-shadow: 0 0 12px #ff5500, 0 0 20px #ff9500;
-            opacity: 0;
-            animation: emberRise 3.5s infinite ease-out;
+            border-radius: 50%; box-shadow: 0 0 12px #ff5500, 0 0 20px #ff9500;
+            opacity: 0; animation: emberRise 3.5s infinite ease-out;
         }
-
         @keyframes emberRise {
             0% { transform: translateY(100vh) scale(0.3); opacity: 0; }
             15% { opacity: 1; }
             85% { opacity: 0.6; }
             100% { transform: translateY(-100px) scale(1.8); opacity: 0; }
         }
-
-        /* 40 braises */
+        /* 40 braises (décalages) */
         .ember:nth-child(1) { left: 8%; animation-delay: 0s; animation-duration: 3s; }
         .ember:nth-child(2) { left: 15%; animation-delay: 0.8s; animation-duration: 3.4s; }
         .ember:nth-child(3) { left: 23%; animation-delay: 1.5s; animation-duration: 2.8s; }
@@ -133,61 +118,36 @@
             z-index: 2;
         }
 
-        /* === HEADER — LOGO BLANC, PLUS GROS, MIEUX ORGANISÉ === */
+        /* === LOGO BLANC, GROS, SANS A === */
         header {
             text-align: center;
             margin-bottom: 6rem;
         }
 
-        .logo-container {
-            display: inline-block;
-            position: relative;
-            margin-bottom: 2rem;
-        }
-
         .logo {
             font-family: 'Angel Wish', 'UnifrakturMaguntia', cursive;
-            font-size: 7rem; /* +1rem pour plus de visibilité */
+            font-size: 7.5rem;
             font-weight: normal;
-            color: #ffffff !important; /* BLANC PUR */
+            color: #ffffff;
             text-shadow: 
-                0 0 20px rgba(255, 85, 0, 0.9),
-                0 0 40px rgba(255, 0, 0, 0.7),
-                -3px 3px 0 #000,
-                3px -3px 0 #000;
-            letter-spacing: -3px;
-            line-height: 0.9;
-            position: relative;
+                0 0 25px rgba(255, 255, 255, 0.8),
+                0 0 50px rgba(255, 85, 0, 0.7),
+                0 0 80px rgba(255, 0, 0, 0.5),
+                -4px 4px 0 #000,
+                4px -4px 0 #000;
+            letter-spacing: -4px;
+            line-height: 0.85;
             display: inline-block;
-        }
-
-        .anarchy-symbol {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-5deg);
-            font-size: 3.4rem;
-            color: var(--anarchy-red);
-            text-shadow: var(--anarchy-glow);
-            z-index: 3;
-            animation: anarchyPulse 2s infinite;
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-        }
-
-        @keyframes anarchyPulse {
-            0%, 100% { transform: translate(-50%, -50%) rotate(-5deg) scale(1); }
-            50% { transform: translate(-50%, -50%) rotate(-8deg) scale(1.15); }
+            margin-bottom: 1.5rem;
         }
 
         .logo-sub {
-            font-size: 1.6rem;
+            font-size: 1.7rem;
             color: var(--ember-glow);
-            letter-spacing: 6px;
+            letter-spacing: 7px;
             font-weight: bold;
             text-transform: uppercase;
-            margin-top: 1.5rem;
-            text-shadow: 0 0 12px rgba(255, 140, 51, 0.6);
+            text-shadow: 0 0 15px rgba(255, 140, 51, 0.7);
         }
 
         .tagline {
@@ -196,11 +156,23 @@
             font-style: italic;
             margin: 2.5rem auto 0;
             max-width: 800px;
-            line-height: 1.8;
+            line-height: 1.9;
             padding: 0 1rem;
         }
 
-        /* === FEATURES — 2 colonnes, aéré === */
+        /* === CARTES — BORDURE ROUGE VIF === */
+        .feature-card, .spec-item, .flash-section, .requirements {
+            border: 2px solid var(--fire-red) !important;
+            box-shadow: var(--neon-red), 0 0 20px rgba(255, 0, 0, 0.3) !important;
+            transition: all 0.4s ease;
+        }
+
+        .feature-card:hover, .spec-item:hover {
+            box-shadow: var(--neon-red), 0 0 40px rgba(255, 0, 0, 0.6) !important;
+            transform: translateY(-8px);
+        }
+
+        /* === FEATURES === */
         .features {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -210,35 +182,16 @@
 
         .feature-card {
             background: var(--card-bg);
-            border: 1px solid rgba(255, 85, 0, 0.3);
-            border-radius: 12px;
+            border-radius: 14px;
             padding: 2.8rem 2rem;
-            transition: all 0.4s ease;
-            position: relative;
-            overflow: hidden;
             text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        }
-
-        .feature-card:hover {
-            transform: translateY(-10px);
-            border-color: var(--fire-orange);
-            box-shadow: var(--neon-fire), 0 10px 30px rgba(255, 85, 0, 0.2);
-        }
-
-        .feature-icon {
-            font-size: 3.2rem;
-            color: var(--fire-orange);
-            margin-bottom: 1.2rem;
-            text-shadow: 0 0 15px rgba(255, 85, 0, 0.6);
         }
 
         .feature-title {
             font-family: 'Angel Wish', 'UnifrakturMaguntia', cursive;
             font-size: 1.9rem;
             color: var(--text-primary);
-            margin-bottom: 1rem;
-            letter-spacing: 1px;
+            margin: 1rem 0;
         }
 
         .feature-desc {
@@ -247,36 +200,23 @@
             font-size: 1.05rem;
         }
 
-        /* === FLASH SECTION — aérée, pro === */
+        /* === BOUTON FLASH — HEXAGONAL, PULSANT, DOMINANT === */
         .flash-section {
-            background: linear-gradient(135deg, rgba(17,17,17,0.95), rgba(10,10,10,0.98));
-            border: 2px solid rgba(255, 85, 0, 0.5);
-            border-radius: 16px;
-            padding: 4.5rem 3rem;
+            background: linear-gradient(135deg, #0f0f0f, #0a0a0a);
+            border-radius: 20px;
+            padding: 5rem 3rem;
             text-align: center;
-            box-shadow: 0 0 50px rgba(255, 85, 0, 0.25);
             margin: 5rem auto;
-            max-width: 900px;
-        }
-
-        .flash-section::before {
-            content: 'THERMOSTAT MODE';
-            position: absolute;
-            top: 1.8rem;
-            right: 2.5rem;
-            font-size: 1rem;
-            color: rgba(255, 85, 0, 0.6);
-            letter-spacing: 4px;
-            font-weight: bold;
+            max-width: 950px;
+            position: relative;
         }
 
         .flash-title {
             font-family: 'Angel Wish', 'UnifrakturMaguntia', cursive;
-            font-size: 3.2rem;
+            font-size: 3.3rem;
             color: var(--fire-orange);
             margin-bottom: 1.8rem;
             text-shadow: var(--neon-fire);
-            letter-spacing: 2px;
         }
 
         .flash-desc {
@@ -289,115 +229,78 @@
             line-height: 1.8;
         }
 
-        esp-web-install-button::part(button) {
-            background: linear-gradient(135deg, #ff5500, #ff0000) !important;
-            color: white !important;
-            padding: 1.6rem 5.5rem !important;
-            font-size: 1.6rem !important;
-            font-weight: bold !important;
-            text-transform: uppercase !important;
-            letter-spacing: 3px !important;
-            border: none !important;
-            border-radius: 10px !important;
-            cursor: pointer !important;
-            box-shadow: 0 0 40px rgba(255, 85, 0, 0.7) !important;
-            transition: all 0.4s ease !important;
-            font-family: 'Courier New', monospace !important;
-            position: relative !important;
-            overflow: hidden !important;
-            display: inline-block !important;
-        }
-
-        esp-web-install-button::part(button):hover {
-            transform: translateY(-5px) scale(1.05) !important;
-            box-shadow: 0 0 60px rgba(255, 85, 0, 1) !important;
-        }
-
-        .requirements {
-            margin-top: 3rem;
-            text-align: left;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-            background: rgba(255, 85, 0, 0.06);
-            padding: 2rem;
-            border-radius: 10px;
-            border: 1px dashed rgba(255, 85, 0, 0.4);
-        }
-
-        .requirements h3 {
-            color: var(--fire-orange);
-            margin-bottom: 1.2rem;
-            font-family: 'Angel Wish', cursive;
-            font-size: 1.5rem;
-            text-align: center;
-        }
-
-        .requirements ul {
-            list-style: none;
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
-
-        .requirements li {
-            padding: 0.6rem 0;
-            padding-left: 1.8rem;
+        /* HEXAGONE STYLÉ */
+        .hex-button {
+            display: inline-block;
             position: relative;
+            width: 300px;
+            height: 170px;
+            margin: 2rem auto;
+            background: linear-gradient(135deg, #ff3300, #ff0000);
+            clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
+            box-shadow: 
+                0 0 50px rgba(255, 0, 0, 0.9),
+                0 0 80px rgba(255, 85, 0, 0.6),
+                inset 0 0 30px rgba(255, 255, 255, 0.2);
+            animation: pulseHex 2s infinite;
+            cursor: pointer;
+            transition: all 0.4s ease;
         }
 
-        .requirements li::before {
-            content: 'A';
+        .hex-button:hover {
+            transform: scale(1.08) translateY(-10px);
+            box-shadow: 
+                0 0 80px rgba(255, 0, 0, 1),
+                0 0 120px rgba(255, 85, 0, 0.8),
+                inset 0 0 40px rgba(255, 255, 255, 0.3);
+            animation: pulseHex 1s infinite;
+        }
+
+        @keyframes pulseHex {
+            0%, 100% { box-shadow: 0 0 50px rgba(255, 0, 0, 0.9), 0 0 80px rgba(255, 85, 0, 0.6); }
+            50% { box-shadow: 0 0 70px rgba(255, 0, 0, 1), 0 0 100px rgba(255, 85, 0, 0.8); }
+        }
+
+        .hex-button span {
             position: absolute;
-            left: 0;
-            color: var(--anarchy-red);
-            font-weight: bold;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Angel Wish', cursive;
+            font-size: 1.8rem;
+            color: white;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.9);
+            letter-spacing: 2px;
+            white-space: nowrap;
         }
 
-        /* === SPECS === */
+        /* === SPECS & FOOTER === */
         .specs {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 1.8rem;
-            margin: 5rem 0;
+            margin: 5rem auto;
             max-width: 1000px;
-            margin-left: auto;
-            margin-right: auto;
         }
 
         .spec-item {
             background: var(--card-bg);
             padding: 2.2rem;
-            border: 1px solid rgba(255, 85, 0, 0.3);
-            border-radius: 10px;
+            border-radius: 12px;
             text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        .spec-item:hover {
-            border-color: var(--fire-orange);
-            box-shadow: 0 0 25px rgba(255, 85, 0, 0.3);
         }
 
         .spec-value {
+            font-family: 'Angel Wish', cursive;
             font-size: 1.9rem;
-            font-weight: bold;
             color: var(--fire-orange);
             margin-bottom: 0.6rem;
-            font-family: 'Angel Wish', cursive;
         }
 
-        .spec-label {
-            font-size: 0.95rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-        }
-
-        /* === FOOTER === */
         footer {
             text-align: center;
             padding: 4rem 0 2rem;
-            border-top: 1px dashed rgba(255, 85, 0, 0.3);
+            border-top: 1px dashed rgba(255, 0, 0, 0.4);
             color: var(--text-secondary);
             font-size: 0.95rem;
             margin-top: 5rem;
@@ -411,17 +314,15 @@
 
         footer a:hover {
             color: white;
-            text-shadow: var(--neon-fire);
+            text-shadow: 0 0 20px rgba(255, 85, 0, 0.8);
         }
 
         /* Responsive */
         @media (max-width: 768px) {
-            .logo { font-size: 5rem; }
-            .anarchy-symbol { font-size: 2.5rem; }
-            .container { padding: 2rem 1rem; }
-            .flash-section { padding: 3rem 1.5rem; margin: 3rem 1rem; }
-            .features { grid-template-columns: 1fr; gap: 2rem; }
-            .tagline { font-size: 1.2rem; }
+            .logo { font-size: 5.5rem; }
+            .hex-button { width: 250px; height: 140px; }
+            .hex-button span { font-size: 1.5rem; }
+            .flash-section { padding: 3rem 1.5rem; }
         }
     </style>
 </head>
@@ -444,9 +345,7 @@
     <div class="container">
         <!-- HEADER -->
         <header>
-            <div class="logo-container">
-                <h1 class="logo">Touch<span class="anarchy-symbol">A</span>xe</h1>
-            </div>
+            <h1 class="logo">TouchAxe</h1>
             <div class="logo-sub">SWARM THERMOSTAT CONTROL</div>
             <p class="tagline">
                 Open-source touchscreen dashboard for BitAxe miners.<br>
@@ -458,43 +357,42 @@
         <!-- FEATURES -->
         <div class="features">
             <div class="feature-card">
-                <span class="feature-icon">Real-Time Swarm</span>
-                <h3 class="feature-title">Real-Time Monitoring</h3>
+                <div class="feature-title">Real-Time Monitoring</div>
                 <p class="feature-desc">Track hashrate, power, and best share across your entire swarm in real-time.</p>
             </div>
             <div class="feature-card">
-                <span class="feature-icon">Bitcoin Live</span>
-                <h3 class="feature-title">Bitcoin Price & Stats</h3>
+                <div class="feature-title">Bitcoin Price & Stats</div>
                 <p class="feature-desc">Live BTC price, Sats conversion, network difficulty — stay informed.</p>
             </div>
             <div class="feature-card">
-                <span class="feature-icon">Touch Interface</span>
-                <h3 class="feature-title">480×272 Touchscreen</h3>
+                <div class="feature-title">480×272 Touchscreen</div>
                 <p class="feature-desc">Capacitive touch with swipe gestures and LVGL animations.</p>
             </div>
             <div class="feature-card">
-                <span class="feature-icon">Thermostat</span>
-                <h3 class="feature-title">Thermostat Mode</h3>
+                <div class="feature-title">Thermostat Mode</div>
                 <p class="feature-desc">Turn mining heat into home warmth. Control your swarm like a digital forge.</p>
             </div>
         </div>
 
-        <!-- FLASH -->
+        <!-- FLASH — BOUTON HEXAGONAL DOMINANT -->
         <div class="flash-section">
-            <h2 class="flash-title">Flash Your Thermostat</h2>
+            <h2 class="flash-title">Flash Firmware Here</h2>
             <p class="flash-desc">
                 Connect your ESP32-S3 + 480x272 touchscreen via USB.<br>
-                Click below to flash TouchAxe firmware directly in-browser.
+                Click the crystal below to flash TouchAxe firmware instantly.
             </p>
 
+            <!-- Bouton hexagonal stylé -->
             <esp-web-install-button manifest="./firmware/manifest.json">
-                <button slot="activate">INSTALL FIRMWARE</button>
+                <div class="hex-button" slot="activate">
+                    <span>FLASH NOW</span>
+                </div>
                 <span slot="unsupported">Use Chrome/Edge/Opera</span>
                 <span slot="not-allowed">HTTPS required</span>
             </esp-web-install-button>
 
             <div class="requirements">
-                <h3>Requirements</h3>
+                <h3 style="color:var(--fire-red); font-family:'Angel Wish'; text-align:center;">Requirements</h3>
                 <ul>
                     <li>ESP32-S3 + 480x272 touchscreen (Sunton 4827S043C)</li>
                     <li>Chrome, Edge, or Opera</li>
@@ -529,11 +427,10 @@
             <p>
                 Built with fire by <a href="https://github.com/Silexperience210" target="_blank">Silexperience210</a><br>
                 <a href="https://github.com/Silexperience210/TouchAxe" target="_blank">GitHub</a> • 
-                <a href="https://github.com/Silexperience210/TouchAxe/issues" target="_blank">Issues</a> • 
-                <a href="https://x.com/Silexperience/" target="_blank">Twitter</a>
+                <a href="https://github.com/Silexperience210/TouchAxe/issues" target="_blank">Issues</a>
             </p>
             <p style="margin-top: 1.2rem; font-size: 0.85rem; opacity: 0.8;">
-                Open Source • MIT License • ESP-IDF + LVGL • Angel Wish Font (Personal Use)
+                Open Source • MIT License • ESP-IDF + LVGL
             </p>
         </footer>
     </div>
