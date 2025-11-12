@@ -6,7 +6,7 @@
     <title>TouchAxe - Swarm Thermostat & Bitcoin Miner Dashboard</title>
     <meta name="description" content="TouchAxe: Open-source touchscreen thermostat for BitAxe miners. Monitor, control, and heat your swarm with fire.">
 
-    <!-- === ANGEL WISH .TTF (depuis assets/fonts) === -->
+    <!-- ANGEL WISH .TTF depuis assets/fonts -->
     <style>
         @font-face {
             font-family: 'Angel Wish';
@@ -17,7 +17,7 @@
         }
     </style>
 
-    <!-- Fallback Google Fonts (si .ttf échoue) -->
+    <!-- Fallback si .ttf échoue -->
     <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap" rel="stylesheet">
 
     <!-- ESP Web Tools -->
@@ -83,7 +83,7 @@
             100% { transform: translateY(-100px) scale(1.8); opacity: 0; }
         }
 
-        /* 40 braises (décalages aléatoires) */
+        /* 40 braises */
         .ember:nth-child(1) { left: 8%; animation-delay: 0s; animation-duration: 3s; }
         .ember:nth-child(2) { left: 15%; animation-delay: 0.8s; animation-duration: 3.4s; }
         .ember:nth-child(3) { left: 23%; animation-delay: 1.5s; animation-duration: 2.8s; }
@@ -133,36 +133,32 @@
             z-index: 2;
         }
 
-        /* === HEADER === */
+        /* === HEADER — LOGO BLANC, PLUS GROS, MIEUX ORGANISÉ === */
         header {
             text-align: center;
-            margin-bottom: 5rem;
+            margin-bottom: 6rem;
         }
 
         .logo-container {
             display: inline-block;
             position: relative;
-            margin-bottom: 1.5rem;
+            margin-bottom: 2rem;
         }
 
         .logo {
             font-family: 'Angel Wish', 'UnifrakturMaguntia', cursive;
-            font-size: 6rem;
+            font-size: 7rem; /* +1rem pour plus de visibilité */
             font-weight: normal;
-            color: var(--fire-orange);
+            color: #ffffff !important; /* BLANC PUR */
             text-shadow: 
                 0 0 20px rgba(255, 85, 0, 0.9),
                 0 0 40px rgba(255, 0, 0, 0.7),
                 -3px 3px 0 #000,
                 3px -3px 0 #000;
-            letter-spacing: -2px;
+            letter-spacing: -3px;
             line-height: 0.9;
             position: relative;
             display: inline-block;
-            background: linear-gradient(135deg, #ff5500, #ff0000);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
 
         .anarchy-symbol {
@@ -170,7 +166,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) rotate(-5deg);
-            font-size: 3rem;
+            font-size: 3.4rem;
             color: var(--anarchy-red);
             text-shadow: var(--anarchy-glow);
             z-index: 3;
@@ -185,71 +181,61 @@
         }
 
         .logo-sub {
-            font-size: 1.3rem;
+            font-size: 1.6rem;
             color: var(--ember-glow);
-            letter-spacing: 5px;
+            letter-spacing: 6px;
             font-weight: bold;
             text-transform: uppercase;
-            margin-top: 1rem;
-            text-shadow: 0 0 10px rgba(255, 140, 51, 0.6);
+            margin-top: 1.5rem;
+            text-shadow: 0 0 12px rgba(255, 140, 51, 0.6);
         }
 
         .tagline {
-            font-size: 1.4rem;
+            font-size: 1.35rem;
             color: var(--text-secondary);
             font-style: italic;
-            margin: 2rem 0;
+            margin: 2.5rem auto 0;
             max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
-            line-height: 1.6;
+            line-height: 1.8;
+            padding: 0 1rem;
         }
 
-        /* === FEATURES === */
+        /* === FEATURES — 2 colonnes, aéré === */
         .features {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin-bottom: 4rem;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2.5rem;
+            margin-bottom: 5rem;
         }
 
         .feature-card {
             background: var(--card-bg);
             border: 1px solid rgba(255, 85, 0, 0.3);
-            border-radius: 8px;
-            padding: 2.5rem;
+            border-radius: 12px;
+            padding: 2.8rem 2rem;
             transition: all 0.4s ease;
             position: relative;
             overflow: hidden;
             text-align: center;
-        }
-
-        .feature-card::before {
-            content: 'A';
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            font-size: 1.5rem;
-            color: rgba(255, 0, 0, 0.2);
-            pointer-events: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
 
         .feature-card:hover {
-            transform: translateY(-8px);
+            transform: translateY(-10px);
             border-color: var(--fire-orange);
-            box-shadow: var(--neon-fire);
+            box-shadow: var(--neon-fire), 0 10px 30px rgba(255, 85, 0, 0.2);
         }
 
         .feature-icon {
-            font-size: 3rem;
+            font-size: 3.2rem;
             color: var(--fire-orange);
-            margin-bottom: 1rem;
+            margin-bottom: 1.2rem;
             text-shadow: 0 0 15px rgba(255, 85, 0, 0.6);
         }
 
         .feature-title {
             font-family: 'Angel Wish', 'UnifrakturMaguntia', cursive;
-            font-size: 1.8rem;
+            font-size: 1.9rem;
             color: var(--text-primary);
             margin-bottom: 1rem;
             letter-spacing: 1px;
@@ -261,113 +247,101 @@
             font-size: 1.05rem;
         }
 
-        /* === FLASH SECTION === */
+        /* === FLASH SECTION — aérée, pro === */
         .flash-section {
             background: linear-gradient(135deg, rgba(17,17,17,0.95), rgba(10,10,10,0.98));
             border: 2px solid rgba(255, 85, 0, 0.5);
-            border-radius: 12px;
-            padding: 4rem;
+            border-radius: 16px;
+            padding: 4.5rem 3rem;
             text-align: center;
-            box-shadow: 0 0 40px rgba(255, 85, 0, 0.2);
-            margin-bottom: 4rem;
+            box-shadow: 0 0 50px rgba(255, 85, 0, 0.25);
+            margin: 5rem auto;
+            max-width: 900px;
         }
 
         .flash-section::before {
             content: 'THERMOSTAT MODE';
             position: absolute;
-            top: 1.5rem;
-            right: 2rem;
+            top: 1.8rem;
+            right: 2.5rem;
             font-size: 1rem;
             color: rgba(255, 85, 0, 0.6);
-            letter-spacing: 3px;
+            letter-spacing: 4px;
             font-weight: bold;
         }
 
         .flash-title {
             font-family: 'Angel Wish', 'UnifrakturMaguntia', cursive;
-            font-size: 3rem;
+            font-size: 3.2rem;
             color: var(--fire-orange);
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.8rem;
             text-shadow: var(--neon-fire);
             letter-spacing: 2px;
         }
 
         .flash-desc {
             color: var(--text-secondary);
-            margin-bottom: 3rem;
-            font-size: 1.15rem;
+            margin-bottom: 3.5rem;
+            font-size: 1.2rem;
             max-width: 700px;
             margin-left: auto;
             margin-right: auto;
-            line-height: 1.7;
+            line-height: 1.8;
         }
 
-        /* Bouton flash custom */
         esp-web-install-button::part(button) {
             background: linear-gradient(135deg, #ff5500, #ff0000) !important;
             color: white !important;
-            padding: 1.5rem 5rem !important;
-            font-size: 1.5rem !important;
+            padding: 1.6rem 5.5rem !important;
+            font-size: 1.6rem !important;
             font-weight: bold !important;
             text-transform: uppercase !important;
-            letter-spacing: 2px !important;
+            letter-spacing: 3px !important;
             border: none !important;
-            border-radius: 8px !important;
+            border-radius: 10px !important;
             cursor: pointer !important;
-            box-shadow: 0 0 30px rgba(255, 85, 0, 0.6) !important;
+            box-shadow: 0 0 40px rgba(255, 85, 0, 0.7) !important;
             transition: all 0.4s ease !important;
             font-family: 'Courier New', monospace !important;
             position: relative !important;
             overflow: hidden !important;
             display: inline-block !important;
-            margin: 1rem 0 !important;
-        }
-
-        esp-web-install-button::part(button)::before {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%;
-            width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-            transition: left 0.6s;
-        }
-
-        esp-web-install-button::part(button):hover::before {
-            left: 100%;
         }
 
         esp-web-install-button::part(button):hover {
-            transform: translateY(-4px) scale(1.03) !important;
-            box-shadow: 0 0 50px rgba(255, 85, 0, 0.9) !important;
+            transform: translateY(-5px) scale(1.05) !important;
+            box-shadow: 0 0 60px rgba(255, 85, 0, 1) !important;
         }
 
         .requirements {
-            margin-top: 2.5rem;
+            margin-top: 3rem;
             text-align: left;
             max-width: 600px;
             margin-left: auto;
             margin-right: auto;
-            background: rgba(255, 85, 0, 0.05);
-            padding: 1.5rem;
-            border-radius: 8px;
-            border: 1px dashed rgba(255, 85, 0, 0.3);
+            background: rgba(255, 85, 0, 0.06);
+            padding: 2rem;
+            border-radius: 10px;
+            border: 1px dashed rgba(255, 85, 0, 0.4);
         }
 
         .requirements h3 {
             color: var(--fire-orange);
-            margin-bottom: 1rem;
+            margin-bottom: 1.2rem;
             font-family: 'Angel Wish', cursive;
-            font-size: 1.4rem;
+            font-size: 1.5rem;
+            text-align: center;
         }
 
         .requirements ul {
             list-style: none;
             color: var(--text-secondary);
+            font-size: 0.95rem;
         }
 
         .requirements li {
-            padding: 0.5rem 0;
-            padding-left: 1.5rem;
+            padding: 0.6rem 0;
+            padding-left: 1.8rem;
             position: relative;
         }
 
@@ -376,35 +350,39 @@
             position: absolute;
             left: 0;
             color: var(--anarchy-red);
+            font-weight: bold;
         }
 
         /* === SPECS === */
         .specs {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin: 4rem 0;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1.8rem;
+            margin: 5rem 0;
+            max-width: 1000px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .spec-item {
             background: var(--card-bg);
-            padding: 2rem;
+            padding: 2.2rem;
             border: 1px solid rgba(255, 85, 0, 0.3);
-            border-radius: 8px;
+            border-radius: 10px;
             text-align: center;
             transition: all 0.3s ease;
         }
 
         .spec-item:hover {
             border-color: var(--fire-orange);
-            box-shadow: 0 0 20px rgba(255, 85, 0, 0.3);
+            box-shadow: 0 0 25px rgba(255, 85, 0, 0.3);
         }
 
         .spec-value {
-            font-size: 1.8rem;
+            font-size: 1.9rem;
             font-weight: bold;
             color: var(--fire-orange);
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.6rem;
             font-family: 'Angel Wish', cursive;
         }
 
@@ -412,16 +390,17 @@
             font-size: 0.95rem;
             color: var(--text-secondary);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
         }
 
         /* === FOOTER === */
         footer {
             text-align: center;
-            padding: 3rem 0;
+            padding: 4rem 0 2rem;
             border-top: 1px dashed rgba(255, 85, 0, 0.3);
             color: var(--text-secondary);
             font-size: 0.95rem;
+            margin-top: 5rem;
         }
 
         footer a {
@@ -437,11 +416,12 @@
 
         /* Responsive */
         @media (max-width: 768px) {
-            .logo { font-size: 4rem; }
-            .anarchy-symbol { font-size: 2rem; }
+            .logo { font-size: 5rem; }
+            .anarchy-symbol { font-size: 2.5rem; }
             .container { padding: 2rem 1rem; }
-            .flash-section { padding: 2.5rem 1.5rem; }
-            .features { grid-template-columns: 1fr; }
+            .flash-section { padding: 3rem 1.5rem; margin: 3rem 1rem; }
+            .features { grid-template-columns: 1fr; gap: 2rem; }
+            .tagline { font-size: 1.2rem; }
         }
     </style>
 </head>
@@ -462,60 +442,69 @@
     </div>
 
     <div class="container">
+        <!-- HEADER -->
         <header>
             <div class="logo-container">
                 <h1 class="logo">Touch<span class="anarchy-symbol">A</span>xe</h1>
             </div>
             <div class="logo-sub">SWARM THERMOSTAT CONTROL</div>
-            <p class="tagline">Open-source touchscreen dashboard for BitAxe miners. Monitor hashrate, power, and temperature. Control your swarm like a forge master.</p>
+            <p class="tagline">
+                Open-source touchscreen dashboard for BitAxe miners.<br>
+                Monitor hashrate, power, and temperature.<br>
+                Control your swarm like a forge master.
+            </p>
         </header>
 
+        <!-- FEATURES -->
         <div class="features">
             <div class="feature-card">
                 <span class="feature-icon">Real-Time Swarm</span>
                 <h3 class="feature-title">Real-Time Monitoring</h3>
-                <p class="feature-desc">Track hashrate, power consumption, and best share across your entire BitAxe swarm in real-time.</p>
+                <p class="feature-desc">Track hashrate, power, and best share across your entire swarm in real-time.</p>
             </div>
             <div class="feature-card">
                 <span class="feature-icon">Bitcoin Live</span>
                 <h3 class="feature-title">Bitcoin Price & Stats</h3>
-                <p class="feature-desc">Live BTC price with Sats conversion. Stay informed about network difficulty and market movements.</p>
+                <p class="feature-desc">Live BTC price, Sats conversion, network difficulty — stay informed.</p>
             </div>
             <div class="feature-card">
                 <span class="feature-icon">Touch Interface</span>
                 <h3 class="feature-title">480×272 Touchscreen</h3>
-                <p class="feature-desc">Ultra-responsive capacitive touch with swipe gestures and smooth LVGL animations.</p>
+                <p class="feature-desc">Capacitive touch with swipe gestures and LVGL animations.</p>
             </div>
             <div class="feature-card">
-                <span class="feature-icon">Temperature Control</span>
+                <span class="feature-icon">Thermostat</span>
                 <h3 class="feature-title">Thermostat Mode</h3>
                 <p class="feature-desc">Turn mining heat into home warmth. Control your swarm like a digital forge.</p>
             </div>
         </div>
 
+        <!-- FLASH -->
         <div class="flash-section">
             <h2 class="flash-title">Flash Your Thermostat</h2>
             <p class="flash-desc">
-                Connect your ESP32-S3 + 480x272 touchscreen via USB. Click below to flash TouchAxe firmware directly in-browser.
+                Connect your ESP32-S3 + 480x272 touchscreen via USB.<br>
+                Click below to flash TouchAxe firmware directly in-browser.
             </p>
 
             <esp-web-install-button manifest="./firmware/manifest.json">
                 <button slot="activate">INSTALL FIRMWARE</button>
-                <span slot="unsupported">Browser not supported. Use Chrome/Edge/Opera.</span>
-                <span slot="not-allowed">HTTPS required.</span>
+                <span slot="unsupported">Use Chrome/Edge/Opera</span>
+                <span slot="not-allowed">HTTPS required</span>
             </esp-web-install-button>
 
             <div class="requirements">
                 <h3>Requirements</h3>
                 <ul>
-                    <li>ESP32-S3 with 480x272 touchscreen (Sunton 4827S043C)</li>
-                    <li>Chrome, Edge, or Opera (Web Serial API)</li>
+                    <li>ESP32-S3 + 480x272 touchscreen (Sunton 4827S043C)</li>
+                    <li>Chrome, Edge, or Opera</li>
                     <li>USB cable</li>
                     <li>BitAxe miners on network (optional)</li>
                 </ul>
             </div>
         </div>
 
+        <!-- SPECS -->
         <div class="specs">
             <div class="spec-item">
                 <div class="spec-value">~1.5 MB</div>
@@ -535,6 +524,7 @@
             </div>
         </div>
 
+        <!-- FOOTER -->
         <footer>
             <p>
                 Built with fire by <a href="https://github.com/Silexperience210" target="_blank">Silexperience210</a><br>
@@ -542,7 +532,7 @@
                 <a href="https://github.com/Silexperience210/TouchAxe/issues" target="_blank">Issues</a> • 
                 <a href="https://x.com/Silexperience/" target="_blank">Twitter</a>
             </p>
-            <p style="margin-top: 1rem; font-size: 0.85rem; opacity: 0.8;">
+            <p style="margin-top: 1.2rem; font-size: 0.85rem; opacity: 0.8;">
                 Open Source • MIT License • ESP-IDF + LVGL • Angel Wish Font (Personal Use)
             </p>
         </footer>
