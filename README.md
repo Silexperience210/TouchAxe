@@ -355,6 +355,8 @@ of this software and associated documentation files...
 
 **Made with ⚡ and ₿ by [Silexperience210](https://github.com/Silexperience210)**
 
+**⚡ Powered by Silexperience ⚡**
+
 If you find this project useful, consider giving it a ⭐!
 
 [![GitHub stars](https://img.shields.io/github/stars/Silexperience210/TouchAxe?style=social)](https://github.com/Silexperience210/TouchAxe/stargazers)

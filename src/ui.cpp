@@ -407,6 +407,13 @@ void UI::showWelcomeScreen() {
     lv_obj_set_style_text_color(wifi_status_label, lv_color_hex(0xCCCCCC), 0);
     lv_obj_align(wifi_status_label, LV_ALIGN_CENTER, 0, 80);
     
+    // Footer "Powered by Silexperience"
+    lv_obj_t* footer = lv_label_create(scr);
+    lv_label_set_text(footer, "Powered by Silexperience");
+    lv_obj_set_style_text_font(footer, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(footer, lv_color_hex(0xFF9500), 0);
+    lv_obj_align(footer, LV_ALIGN_BOTTOM_MID, 0, -10);
+    
     welcome_screen = scr;
     
     // Forcer le rafraîchissement de l'écran
@@ -689,6 +696,13 @@ void UI::showClockScreen() {
         lv_timer_reset(time_update_timer);
     }
     
+    // Footer "Powered by Silexperience"
+    lv_obj_t* footer = lv_label_create(scr);
+    lv_label_set_text(footer, LV_SYMBOL_CHARGE " Powered by Silexperience " LV_SYMBOL_CHARGE);
+    lv_obj_set_style_text_font(footer, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(footer, lv_color_hex(0xFF9500), 0);
+    lv_obj_align(footer, LV_ALIGN_BOTTOM_MID, 0, -2);
+    
     Serial.println("[UI] Clock screen created");
 }
 
@@ -870,6 +884,13 @@ void UI::showMinersScreen() {
     lv_label_set_text(label_config, LV_SYMBOL_SETTINGS " Config");
     lv_obj_set_style_text_font(label_config, &lv_font_montserrat_14, 0);
     lv_obj_center(label_config);
+    
+    // Footer "Powered by Silexperience"
+    lv_obj_t* footer = lv_label_create(scr);
+    lv_label_set_text(footer, "Powered by Silexperience");
+    lv_obj_set_style_text_font(footer, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(footer, lv_color_hex(0xFF9500), 0);
+    lv_obj_align(footer, LV_ALIGN_BOTTOM_MID, 0, -55);  // Au-dessus des boutons
     
     // Ensure buttons are on top of all other elements
     lv_obj_move_foreground(btn_scroll_up);
