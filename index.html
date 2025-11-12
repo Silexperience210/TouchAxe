@@ -5,13 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TouchAxe - Swarm Thermostat & Bitcoin Miner Dashboard</title>
     <meta name="description" content="TouchAxe: Open-source touchscreen thermostat for BitAxe miners. Monitor, control, and heat your swarm with fire.">
-    
-    <!-- Google Fonts: Angel Wish (Blackletter) -->
-    <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia|IM+Fell+English+SC|Pirata+One|MedievalSharp|Almendra+SC|Cinzel+Decorative:wght@900|ZCOOL+QingKe+HuangYou&display=swap" rel="stylesheet">
-    
+
+    <!-- === ANGEL WISH .TTF (depuis assets/fonts) === -->
+    <style>
+        @font-face {
+            font-family: 'Angel Wish';
+            src: url('assets/fonts/AngelWish.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+    </style>
+
+    <!-- Fallback Google Fonts (si .ttf échoue) -->
+    <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+
     <!-- ESP Web Tools -->
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
-    
+
     <style>
         :root {
             --fire-orange: #ff5500;
@@ -25,15 +36,15 @@
             --anarchy-red: #ff0000;
             --anarchy-glow: 0 0 25px rgba(255, 0, 0, 0.8);
         }
-        
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: 'ZCOOL QingKe HuangYou', 'UnifrakturMaguntia', cursive;
+            font-family: 'Courier New', monospace;
             background: var(--deep-black);
             color: var(--text-primary);
             min-height: 100vh;
@@ -44,14 +55,12 @@
                 radial-gradient(circle at 20% 80%, rgba(255, 0, 0, 0.1) 0%, transparent 50%),
                 radial-gradient(circle at 80% 90%, rgba(255, 85, 0, 0.12) 0%, transparent 50%);
         }
-        
-        /* === ÉCLATS DE FEU RÉALISTES (particules subtiles) === */
+
+        /* === BRAISES ANIMÉES (subtiles) === */
         .fire-embers {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             pointer-events: none;
             z-index: 1;
             overflow: hidden;
@@ -59,8 +68,7 @@
 
         .ember {
             position: absolute;
-            width: 4px;
-            height: 4px;
+            width: 4px; height: 4px;
             background: radial-gradient(circle, #ff9500 0%, #ff5500 50%, #ff0000 100%);
             border-radius: 50%;
             box-shadow: 0 0 12px #ff5500, 0 0 20px #ff9500;
@@ -75,7 +83,7 @@
             100% { transform: translateY(-100px) scale(1.8); opacity: 0; }
         }
 
-        /* 40 particules subtiles */
+        /* 40 braises (décalages aléatoires) */
         .ember:nth-child(1) { left: 8%; animation-delay: 0s; animation-duration: 3s; }
         .ember:nth-child(2) { left: 15%; animation-delay: 0.8s; animation-duration: 3.4s; }
         .ember:nth-child(3) { left: 23%; animation-delay: 1.5s; animation-duration: 2.8s; }
@@ -129,7 +137,6 @@
         header {
             text-align: center;
             margin-bottom: 5rem;
-            position: relative;
         }
 
         .logo-container {
@@ -139,16 +146,16 @@
         }
 
         .logo {
-            font-family: 'UnifrakturMaguntia', cursive;
-            font-size: 6.5rem;
-            font-weight: 400;
+            font-family: 'Angel Wish', 'UnifrakturMaguntia', cursive;
+            font-size: 6rem;
+            font-weight: normal;
             color: var(--fire-orange);
             text-shadow: 
                 0 0 20px rgba(255, 85, 0, 0.9),
                 0 0 40px rgba(255, 0, 0, 0.7),
                 -3px 3px 0 #000,
                 3px -3px 0 #000;
-            letter-spacing: -3px;
+            letter-spacing: -2px;
             line-height: 0.9;
             position: relative;
             display: inline-block;
@@ -163,7 +170,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) rotate(-5deg);
-            font-size: 3.2rem;
+            font-size: 3rem;
             color: var(--anarchy-red);
             text-shadow: var(--anarchy-glow);
             z-index: 3;
@@ -198,46 +205,33 @@
             line-height: 1.6;
         }
 
-        /* === MAIN CONTENT === */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3rem;
-            margin-bottom: 5rem;
-        }
-
-        @media (max-width: 992px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
         /* === FEATURES === */
         .features {
             display: grid;
-            gap: 1.8rem;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 4rem;
         }
 
         .feature-card {
             background: var(--card-bg);
             border: 1px solid rgba(255, 85, 0, 0.3);
             border-radius: 8px;
-            padding: 2rem;
+            padding: 2.5rem;
             transition: all 0.4s ease;
             position: relative;
             overflow: hidden;
+            text-align: center;
         }
 
         .feature-card::before {
-            content: '';
+            content: 'A';
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--fire-orange), transparent);
-            opacity: 0;
-            transition: opacity 0.4s;
+            top: 1rem;
+            right: 1rem;
+            font-size: 1.5rem;
+            color: rgba(255, 0, 0, 0.2);
+            pointer-events: none;
         }
 
         .feature-card:hover {
@@ -246,23 +240,18 @@
             box-shadow: var(--neon-fire);
         }
 
-        .feature-card:hover::before {
-            opacity: 1;
-        }
-
         .feature-icon {
-            font-size: 2.8rem;
+            font-size: 3rem;
             color: var(--fire-orange);
             margin-bottom: 1rem;
-            display: block;
             text-shadow: 0 0 15px rgba(255, 85, 0, 0.6);
         }
 
         .feature-title {
-            font-family: 'UnifrakturMaguntia', cursive;
-            font-size: 1.6rem;
+            font-family: 'Angel Wish', 'UnifrakturMaguntia', cursive;
+            font-size: 1.8rem;
             color: var(--text-primary);
-            margin-bottom: 0.8rem;
+            margin-bottom: 1rem;
             letter-spacing: 1px;
         }
 
@@ -277,27 +266,26 @@
             background: linear-gradient(135deg, rgba(17,17,17,0.95), rgba(10,10,10,0.98));
             border: 2px solid rgba(255, 85, 0, 0.5);
             border-radius: 12px;
-            padding: 3.5rem;
+            padding: 4rem;
             text-align: center;
             box-shadow: 0 0 40px rgba(255, 85, 0, 0.2);
-            position: relative;
-            overflow: hidden;
+            margin-bottom: 4rem;
         }
 
         .flash-section::before {
             content: 'THERMOSTAT MODE';
             position: absolute;
-            top: 15px;
-            right: 20px;
-            font-size: 0.8rem;
-            color: rgba(255, 85, 0, 0.5);
+            top: 1.5rem;
+            right: 2rem;
+            font-size: 1rem;
+            color: rgba(255, 85, 0, 0.6);
             letter-spacing: 3px;
             font-weight: bold;
         }
 
         .flash-title {
-            font-family: 'UnifrakturMaguntia', cursive;
-            font-size: 2.8rem;
+            font-family: 'Angel Wish', 'UnifrakturMaguntia', cursive;
+            font-size: 3rem;
             color: var(--fire-orange);
             margin-bottom: 1.5rem;
             text-shadow: var(--neon-fire);
@@ -306,51 +294,88 @@
 
         .flash-desc {
             color: var(--text-secondary);
-            margin-bottom: 2.5rem;
+            margin-bottom: 3rem;
             font-size: 1.15rem;
-            max-width: 600px;
+            max-width: 700px;
             margin-left: auto;
             margin-right: auto;
             line-height: 1.7;
         }
 
-        .flash-button {
-            display: inline-block;
-            background: linear-gradient(135deg, #ff5500, #ff0000);
-            color: white;
-            padding: 1.3rem 4rem;
-            font-size: 1.4rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            box-shadow: 0 0 30px rgba(255, 85, 0, 0.6);
-            transition: all 0.4s ease;
-            font-family: 'Courier New', monospace;
-            position: relative;
-            overflow: hidden;
+        /* Bouton flash custom */
+        esp-web-install-button::part(button) {
+            background: linear-gradient(135deg, #ff5500, #ff0000) !important;
+            color: white !important;
+            padding: 1.5rem 5rem !important;
+            font-size: 1.5rem !important;
+            font-weight: bold !important;
+            text-transform: uppercase !important;
+            letter-spacing: 2px !important;
+            border: none !important;
+            border-radius: 8px !important;
+            cursor: pointer !important;
+            box-shadow: 0 0 30px rgba(255, 85, 0, 0.6) !important;
+            transition: all 0.4s ease !important;
+            font-family: 'Courier New', monospace !important;
+            position: relative !important;
+            overflow: hidden !important;
+            display: inline-block !important;
+            margin: 1rem 0 !important;
         }
 
-        .flash-button::before {
+        esp-web-install-button::part(button)::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
             background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
             transition: left 0.6s;
         }
 
-        .flash-button:hover::before {
+        esp-web-install-button::part(button):hover::before {
             left: 100%;
         }
 
-        .flash-button:hover {
-            transform: translateY(-4px) scale(1.03);
-            box-shadow: 0 0 50px rgba(255, 85, 0, 0.9);
+        esp-web-install-button::part(button):hover {
+            transform: translateY(-4px) scale(1.03) !important;
+            box-shadow: 0 0 50px rgba(255, 85, 0, 0.9) !important;
+        }
+
+        .requirements {
+            margin-top: 2.5rem;
+            text-align: left;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            background: rgba(255, 85, 0, 0.05);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px dashed rgba(255, 85, 0, 0.3);
+        }
+
+        .requirements h3 {
+            color: var(--fire-orange);
+            margin-bottom: 1rem;
+            font-family: 'Angel Wish', cursive;
+            font-size: 1.4rem;
+        }
+
+        .requirements ul {
+            list-style: none;
+            color: var(--text-secondary);
+        }
+
+        .requirements li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .requirements li::before {
+            content: 'A';
+            position: absolute;
+            left: 0;
+            color: var(--anarchy-red);
         }
 
         /* === SPECS === */
@@ -358,12 +383,12 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1.5rem;
-            margin-top: 4rem;
+            margin: 4rem 0;
         }
 
         .spec-item {
             background: var(--card-bg);
-            padding: 1.8rem;
+            padding: 2rem;
             border: 1px solid rgba(255, 85, 0, 0.3);
             border-radius: 8px;
             text-align: center;
@@ -376,14 +401,15 @@
         }
 
         .spec-value {
-            font-size: 1.6rem;
+            font-size: 1.8rem;
             font-weight: bold;
             color: var(--fire-orange);
             margin-bottom: 0.5rem;
+            font-family: 'Angel Wish', cursive;
         }
 
         .spec-label {
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -393,7 +419,6 @@
         footer {
             text-align: center;
             padding: 3rem 0;
-            margin-top: 5rem;
             border-top: 1px dashed rgba(255, 85, 0, 0.3);
             color: var(--text-secondary);
             font-size: 0.95rem;
@@ -403,7 +428,6 @@
             color: var(--fire-orange);
             text-decoration: none;
             font-weight: bold;
-            transition: color 0.3s;
         }
 
         footer a:hover {
@@ -411,32 +435,19 @@
             text-shadow: var(--neon-fire);
         }
 
-        /* === RESPONSIVE === */
+        /* Responsive */
         @media (max-width: 768px) {
-            .logo {
-                font-size: 4.5rem;
-            }
-            .anarchy-symbol {
-                font-size: 2.2rem;
-            }
-            .container {
-                padding: 2rem 1rem;
-            }
-            .main-grid {
-                gap: 2rem;
-            }
-            .flash-section {
-                padding: 2.5rem 1.5rem;
-            }
-            .flash-title {
-                font-size: 2.2rem;
-            }
+            .logo { font-size: 4rem; }
+            .anarchy-symbol { font-size: 2rem; }
+            .container { padding: 2rem 1rem; }
+            .flash-section { padding: 2.5rem 1.5rem; }
+            .features { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Éclats de feu -->
+    <!-- Braises -->
     <div class="fire-embers">
         <div class="ember"></div><div class="ember"></div><div class="ember"></div><div class="ember"></div>
         <div class="ember"></div><div class="ember"></div><div class="ember"></div><div class="ember"></div>
@@ -459,58 +470,52 @@
             <p class="tagline">Open-source touchscreen dashboard for BitAxe miners. Monitor hashrate, power, and temperature. Control your swarm like a forge master.</p>
         </header>
 
-        <div class="main-grid">
-            <!-- Features -->
-            <div class="features">
-                <div class="feature-card">
-                    <span class="feature-icon">Real-Time Swarm</span>
-                    <h3 class="feature-title">Real-Time Monitoring</h3>
-                    <p class="feature-desc">Track hashrate, power consumption, and best share across your entire BitAxe swarm in real-time.</p>
-                </div>
-                <div class="feature-card">
-                    <span class="feature-icon">Bitcoin Live</span>
-                    <h3 class="feature-title">Bitcoin Price & Stats</h3>
-                    <p class="feature-desc">Live BTC price with Sats conversion. Stay informed about network difficulty and market movements.</p>
-                </div>
-                <div class="feature-card">
-                    <span class="feature-icon">Touch Interface</span>
-                    <h3 class="feature-title">480×272 Touchscreen</h3>
-                    <p class="feature-desc">Ultra-responsive capacitive touch with swipe gestures and smooth LVGL animations.</p>
-                </div>
+        <div class="features">
+            <div class="feature-card">
+                <span class="feature-icon">Real-Time Swarm</span>
+                <h3 class="feature-title">Real-Time Monitoring</h3>
+                <p class="feature-desc">Track hashrate, power consumption, and best share across your entire BitAxe swarm in real-time.</p>
             </div>
-
-            <!-- Flash Section -->
-            <div class="flash-section">
-                <h2 class="flash-title">Flash Your Thermostat</h2>
-                <p class="flash-desc">
-                    Connect your ESP32-S3 + 480x272 touchscreen via USB. Click below to flash TouchAxe firmware directly in-browser.
-                </p>
-
-                <esp-web-install-button manifest="./firmware/manifest.json">
-                    <button slot="activate" class="flash-button">
-                        INSTALL FIRMWARE
-                    </button>
-                    <span slot="unsupported">
-                        Browser not supported. Use Chrome/Edge/Opera.
-                    </span>
-                    <span slot="not-allowed">
-                        HTTPS required.
-                    </span>
-                </esp-web-install-button>
-
-                <div style="margin-top: 2.5rem; text-align: left; max-width: 500px; margin-left: auto; margin-right: auto;">
-                    <p style="color: #ff8c66; font-size: 0.95rem; margin-bottom: 0.8rem;"><strong>Requirements:</strong></p>
-                    <ul style="color: #ff8c66; font-size: 0.9rem; line-height: 1.6;">
-                        <li>• ESP32-S3 with 480x272 touchscreen (Sunton 4827S043C)</li>
-                        <li>• Chrome, Edge, or Opera (Web Serial API)</li>
-                        <li>• USB cable</li>
-                        <li>• BitAxe miners on network (optional)</li>
-                    </ul>
-                </div>
+            <div class="feature-card">
+                <span class="feature-icon">Bitcoin Live</span>
+                <h3 class="feature-title">Bitcoin Price & Stats</h3>
+                <p class="feature-desc">Live BTC price with Sats conversion. Stay informed about network difficulty and market movements.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">Touch Interface</span>
+                <h3 class="feature-title">480×272 Touchscreen</h3>
+                <p class="feature-desc">Ultra-responsive capacitive touch with swipe gestures and smooth LVGL animations.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">Temperature Control</span>
+                <h3 class="feature-title">Thermostat Mode</h3>
+                <p class="feature-desc">Turn mining heat into home warmth. Control your swarm like a digital forge.</p>
             </div>
         </div>
 
-        <!-- Specs -->
+        <div class="flash-section">
+            <h2 class="flash-title">Flash Your Thermostat</h2>
+            <p class="flash-desc">
+                Connect your ESP32-S3 + 480x272 touchscreen via USB. Click below to flash TouchAxe firmware directly in-browser.
+            </p>
+
+            <esp-web-install-button manifest="./firmware/manifest.json">
+                <button slot="activate">INSTALL FIRMWARE</button>
+                <span slot="unsupported">Browser not supported. Use Chrome/Edge/Opera.</span>
+                <span slot="not-allowed">HTTPS required.</span>
+            </esp-web-install-button>
+
+            <div class="requirements">
+                <h3>Requirements</h3>
+                <ul>
+                    <li>ESP32-S3 with 480x272 touchscreen (Sunton 4827S043C)</li>
+                    <li>Chrome, Edge, or Opera (Web Serial API)</li>
+                    <li>USB cable</li>
+                    <li>BitAxe miners on network (optional)</li>
+                </ul>
+            </div>
+        </div>
+
         <div class="specs">
             <div class="spec-item">
                 <div class="spec-value">~1.5 MB</div>
@@ -538,7 +543,7 @@
                 <a href="https://x.com/Silexperience/" target="_blank">Twitter</a>
             </p>
             <p style="margin-top: 1rem; font-size: 0.85rem; opacity: 0.8;">
-                Open Source • MIT License • ESP-IDF + LVGL
+                Open Source • MIT License • ESP-IDF + LVGL • Angel Wish Font (Personal Use)
             </p>
         </footer>
     </div>
