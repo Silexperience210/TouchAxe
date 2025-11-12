@@ -24,6 +24,7 @@ public:
     void checkBitaxeStatus();   // Check Bitaxe device status periodically
     void refreshMinersIfActive(); // Refresh Miners screen data if currently on that screen
     void updateBitcoinPrice();  // Update Bitcoin price display (called from loop)
+    void updateFallingSquares(); // Update falling squares animation (manual, like updateClock)
 
 private:
     UI() {} // Private constructor

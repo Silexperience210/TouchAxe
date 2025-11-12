@@ -35,6 +35,11 @@ bool BitaxeAPI::makeRequest(const char* endpoint, JsonDocument& doc) {
             return false;
         }
         
+        // DEBUG: Print entire JSON response
+        Serial.println("[BitaxeAPI] JSON Response:");
+        serializeJsonPretty(doc, Serial);
+        Serial.println();
+        
         http.end();
         return true;
     } else {
@@ -121,13 +126,65 @@ bool BitaxeAPI::getStats(BitaxeStats& stats) {
         stats.hashrate = 0.0;
     }
     
-    // Best difficulty
+    // Best difficulty - peut être un nombre OU une string formatée (ex: "997.30 M", "72.6G")
     if (infoDoc.containsKey("bestDiff")) {
-        stats.bestDiff = infoDoc["bestDiff"].as<uint32_t>();
+        if (infoDoc["bestDiff"].is<String>()) {
+            // C'est une string formatée comme "997.30 M" ou "72.6G"
+            String diffStr = infoDoc["bestDiff"].as<String>();
+            float diffValue = 0;
+            char unit = ' ';
+            
+            // Parse "997.30 M" ou "72.6G"
+            if (sscanf(diffStr.c_str(), "%f %c", &diffValue, &unit) >= 1) {
+                if (unit == 'G' || unit == 'g') {
+                    stats.bestDiff = (uint32_t)(diffValue * 1000000000.0); // Giga
+                } else if (unit == 'M' || unit == 'm') {
+                    stats.bestDiff = (uint32_t)(diffValue * 1000000.0);    // Mega
+                } else if (unit == 'K' || unit == 'k') {
+                    stats.bestDiff = (uint32_t)(diffValue * 1000.0);       // Kilo
+                } else {
+                    stats.bestDiff = (uint32_t)diffValue;                  // Pas d'unité
+                }
+                Serial.printf("[BitaxeAPI] Parsed bestDiff string '%s' -> %u\n", diffStr.c_str(), stats.bestDiff);
+            } else {
+                stats.bestDiff = 0;
+                Serial.printf("[BitaxeAPI] Failed to parse bestDiff string: '%s'\n", diffStr.c_str());
+            }
+        } else {
+            // C'est un nombre direct
+            stats.bestDiff = infoDoc["bestDiff"].as<uint32_t>();
+            Serial.printf("[BitaxeAPI] Found bestDiff as number: %u\n", stats.bestDiff);
+        }
     } else if (infoDoc.containsKey("best_diff")) {
         stats.bestDiff = infoDoc["best_diff"].as<uint32_t>();
+        Serial.printf("[BitaxeAPI] Found best_diff in JSON: %u\n", stats.bestDiff);
+    } else if (infoDoc.containsKey("bestSessionDiff")) {
+        if (infoDoc["bestSessionDiff"].is<String>()) {
+            String diffStr = infoDoc["bestSessionDiff"].as<String>();
+            float diffValue = 0;
+            char unit = ' ';
+            
+            if (sscanf(diffStr.c_str(), "%f %c", &diffValue, &unit) >= 1) {
+                if (unit == 'G' || unit == 'g') {
+                    stats.bestDiff = (uint32_t)(diffValue * 1000000000.0);
+                } else if (unit == 'M' || unit == 'm') {
+                    stats.bestDiff = (uint32_t)(diffValue * 1000000.0);
+                } else if (unit == 'K' || unit == 'k') {
+                    stats.bestDiff = (uint32_t)(diffValue * 1000.0);
+                } else {
+                    stats.bestDiff = (uint32_t)diffValue;
+                }
+                Serial.printf("[BitaxeAPI] Parsed bestSessionDiff string '%s' -> %u\n", diffStr.c_str(), stats.bestDiff);
+            } else {
+                stats.bestDiff = 0;
+            }
+        } else {
+            stats.bestDiff = infoDoc["bestSessionDiff"].as<uint32_t>();
+        }
+        Serial.printf("[BitaxeAPI] Found bestSessionDiff in JSON: %u\n", stats.bestDiff);
     } else {
         stats.bestDiff = 0;
+        Serial.println("[BitaxeAPI] WARNING: No bestDiff/best_diff/bestSessionDiff field found in JSON!");
     }
     
     // Shares

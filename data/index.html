@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOUCHAXE ⚡ Configuration Portal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+
+        @keyframes neon-pulse {
+            0%, 100% { 
+                text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000, 0 0 40px #ff0000;
+            }
+            50% { 
+                text-shadow: 0 0 20px #ff0000, 0 0 30px #ff0000, 0 0 40px #ff0000, 0 0 50px #ff0000, 0 0 60px #ff0000;
+            }
+        }
+
+        @keyframes float-particle {
+            0% { transform: translateY(100vh) translateX(0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100vh) translateX(50px); opacity: 0; }
+        }
+
+        @keyframes scan-line {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+
+        @keyframes glow-border {
+            0%, 100% { box-shadow: 0 0 5px #ff0000, inset 0 0 5px #ff0000; }
+            50% { box-shadow: 0 0 20px #ff0000, 0 0 30px #ff0000, inset 0 0 10px #ff0000; }
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000000;
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Particle background */
+        .particles {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: #ff0000;
+            border-radius: 50%;
+            animation: float-particle linear infinite;
+        }
+
+        /* Scanline effect */
+        .scanline {
+            position: fixed;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(transparent, #ff0000, transparent);
+            opacity: 0.1;
+            z-index: 2;
+            pointer-events: none;
+            animation: scan-line 8s linear infinite;
+        }
+
+        /* Container */
+        .container {
+            position: relative;
+            z-index: 10;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 40px 20px;
+            border-bottom: 2px solid #ff0000;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .logo {
+            font-size: 48px;
+            font-weight: bold;
+            color: #ff0000;
+            animation: neon-pulse 2s ease-in-out infinite;
+            letter-spacing: 8px;
+            margin-bottom: 10px;
+        }
+
+        .logo:hover {
+            animation: glitch 0.3s infinite;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 14px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        /* Cards */
+        .card {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0000 100%);
+            border: 2px solid #ff0000;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden;
+            animation: glow-border 3s ease-in-out infinite;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #ff0000, #000000, #ff0000);
+            z-index: -1;
+            filter: blur(10px);
+            opacity: 0.3;
+        }
+
+        .card-title {
+            font-size: 24px;
+            color: #ff0000;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title::before {
+            content: '▶';
+            color: #ff0000;
+            animation: neon-pulse 1.5s ease-in-out infinite;
+        }
+
+        /* Form elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ff6666;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        select {
+            width: 100%;
+            padding: 12px;
+            background: #000000;
+            border: 1px solid #ff0000;
+            border-radius: 5px;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #ff0000;
+            box-shadow: 0 0 10px #ff0000, inset 0 0 5px #ff0000;
+        }
+
+        input::placeholder {
+            color: #444;
+        }
+
+        /* Buttons */
+        button {
+            background: linear-gradient(135deg, #ff0000 0%, #aa0000 100%);
+            color: #ffffff;
+            border: 2px solid #ff0000;
+            padding: 12px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.5s, height 0.5s;
+        }
+
+        button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px #ff0000;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #333 0%, #111 100%);
+            border-color: #666;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #aa0000 0%, #660000 100%);
+        }
+
+        /* Bitaxe list */
+        .bitaxe-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .bitaxe-item {
+            background: rgba(255, 0, 0, 0.05);
+            border: 1px solid #ff0000;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .bitaxe-item:hover {
+            background: rgba(255, 0, 0, 0.1);
+            transform: translateX(5px);
+        }
+
+        .bitaxe-info {
+            flex: 1;
+        }
+
+        .bitaxe-name {
+            font-size: 16px;
+            color: #ff0000;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .bitaxe-address {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .bitaxe-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            margin-top: 5px;
+        }
+
+        .status-online {
+            background: rgba(0, 255, 0, 0.2);
+            color: #00ff00;
+            border: 1px solid #00ff00;
+        }
+
+        .status-offline {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff0000;
+            border: 1px solid #ff0000;
+        }
+
+        .bitaxe-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .bitaxe-actions button {
+            padding: 8px 15px;
+            font-size: 12px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 2px solid #ff0000;
+            margin-top: 60px;
+            color: #666;
+            position: relative;
+        }
+
+        .footer-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            font-size: 14px;
+        }
+
+        .footer-icon {
+            font-size: 24px;
+            animation: neon-pulse 2s ease-in-out infinite;
+        }
+
+        .footer-text {
+            letter-spacing: 2px;
+        }
+
+        .footer-brand {
+            color: #ff0000;
+            font-weight: bold;
+        }
+
+        /* Status indicator */
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+            animation: neon-pulse 1s ease-in-out infinite;
+        }
+
+        /* Grid layout for forms */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 32px;
+                letter-spacing: 4px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .bitaxe-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .bitaxe-actions {
+                width: 100%;
+            }
+
+            .bitaxe-actions button {
+                flex: 1;
+            }
+
+            .footer-content {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 0, 0, 0.3);
+            border-top-color: #ff0000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Particle background -->
+    <div class="particles" id="particles"></div>
+    
+    <!-- Scanline effect -->
+    <div class="scanline"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">TOUCHAXE</div>
+            <div class="subtitle">⚡ Bitaxe Management Portal ⚡</div>
+        </div>
+
+        <!-- WiFi Configuration -->
+        <div class="card">
+            <h2 class="card-title">WiFi Configuration</h2>
+            <div class="form-group">
+                <label for="wifiSSID">Network Name (SSID)</label>
+                <input type="text" id="wifiSSID" placeholder="Enter WiFi SSID">
+            </div>
+            <div class="form-group">
+                <label for="wifiPassword">Network Password</label>
+                <input type="password" id="wifiPassword" placeholder="Enter WiFi password">
+            </div>
+            <button onclick="saveWiFi()">
+                <span id="wifiSaveText">💾 Save WiFi Configuration</span>
+                <span id="wifiSaveSpinner" class="spinner hidden"></span>
+            </button>
+            <button onclick="factoryReset()" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); margin-top: 10px;">
+                <span>� EFFACER TOUT & Redémarrer en AP</span>
+            </button>
+        </div>
+        
+        <!-- System Control -->
+        <div class="card">
+            <h2 class="card-title">System Control</h2>
+            <p style="color: #888; margin-bottom: 20px; font-size: 12px;">
+                Arrêtez le serveur web après configuration pour économiser CPU et RAM. Pour le redémarrer : appuyez sur le bouton "⚙️ Config" sur l'écran tactile.
+            </p>
+            <button onclick="stopWebServer()" style="background: linear-gradient(135deg, #ff6600 0%, #cc5200 100%);">
+                <span>🛑 Arrêter le Serveur Web (Économiser)</span>
+            </button>
+        </div>
+
+        <!-- Bitaxe Configuration -->
+        <div class="card">
+            <h2 class="card-title">Bitaxe Devices</h2>
+            <p style="color: #888; margin-bottom: 20px; font-size: 12px;">
+                Configure multiple Bitaxe or ESPMiner devices. API stats will be displayed on the dashboard.
+            </p>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="bitaxeName">Device Name</label>
+                    <input type="text" id="bitaxeName" placeholder="e.g., Bitaxe #1">
+                </div>
+                <div class="form-group">
+                    <label for="bitaxeIP">IP Address</label>
+                    <input type="text" id="bitaxeIP" placeholder="e.g., 192.168.1.100">
+                </div>
+            </div>
+            
+            <button onclick="addBitaxe()">
+                ➕ Add Bitaxe
+            </button>
+            
+            <button onclick="clearAllBitaxes()" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); margin-top: 10px;">
+                🗑️ Clear All Devices
+            </button>
+            
+            <h3 style="color: #ff0000; margin-top: 30px; margin-bottom: 15px; font-size: 16px; text-transform: uppercase;">
+                Configured Devices (<span id="bitaxeCount">0</span>)
+            </h3>
+            <ul class="bitaxe-list" id="bitaxeList">
+                <li style="color: #666; text-align: center; padding: 20px;">
+                    No devices configured yet
+                </li>
+            </ul>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-content">
+                <span class="footer-icon">⛏️</span>
+                <span class="footer-text">
+                    Créé par <span class="footer-brand">Silexperience</span> pour les pleb miners
+                </span>
+                <span class="footer-icon">💀</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Anti-spam protection: prevent rapid repeated clicks
+        let isProcessing = false;
+        
+        function withDebounce(fn, name) {
+            return function(...args) {
+                if (isProcessing) {
+                    console.log(`Action ${name} blocked: already processing`);
+                    return;
+                }
+                isProcessing = true;
+                
+                // Execute the function
+                const result = fn.apply(this, args);
+                
+                // Reset after 2 seconds
+                setTimeout(() => {
+                    isProcessing = false;
+                }, 2000);
+                
+                return result;
+            };
+        }
+        
+        // Generate particle background
+        function createParticles() {
+            const container = document.getElementById('particles');
+            const particleCount = 50;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDuration = (Math.random() * 10 + 5) + 's';
+                particle.style.animationDelay = Math.random() * 5 + 's';
+                container.appendChild(particle);
+            }
+        }
+
+        // Load Bitaxe list
+        function loadBitaxes() {
+            fetch('/api/bitaxes')
+                .then(response => response.json())
+                .then(data => {
+                    const list = document.getElementById('bitaxeList');
+                    const count = document.getElementById('bitaxeCount');
+                    
+                    if (data.length === 0) {
+                        list.innerHTML = '<li style="color: #666; text-align: center; padding: 20px;">No devices configured yet</li>';
+                        count.textContent = '0';
+                        return;
+                    }
+                    
+                    count.textContent = data.length;
+                    list.innerHTML = '';
+                    
+                    data.forEach((bitaxe, index) => {
+                        const li = document.createElement('li');
+                        li.className = 'bitaxe-item';
+                        li.innerHTML = `
+                            <div class="bitaxe-info">
+                                <div class="bitaxe-name">${bitaxe.name}</div>
+                                <div class="bitaxe-address">📡 ${bitaxe.ip}</div>
+                                <span class="bitaxe-status ${bitaxe.online ? 'status-online' : 'status-offline'}">
+                                    ${bitaxe.online ? '● ONLINE' : '● OFFLINE'}
+                                </span>
+                            </div>
+                            <div class="bitaxe-actions">
+                                <button class="btn-secondary" onclick="testBitaxe('${bitaxe.ip}')">
+                                    🔍 Test
+                                </button>
+                                <button class="btn-danger" onclick="removeBitaxe(${index})">
+                                    🗑️ Remove
+                                </button>
+                            </div>
+                        `;
+                        list.appendChild(li);
+                    });
+                })
+                .catch(err => {
+                    console.error('Error loading bitaxes:', err);
+                });
+        }
+
+        // Add Bitaxe
+        const addBitaxe = withDebounce(function() {
+            const name = document.getElementById('bitaxeName').value.trim();
+            const ip = document.getElementById('bitaxeIP').value.trim();
+            
+            if (!name || !ip) {
+                alert('⚠️ Please enter both name and IP address');
+                isProcessing = false; // Reset on validation error
+                return;
+            }
+            
+            // Validate IP format
+            const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+            if (!ipRegex.test(ip)) {
+                alert('⚠️ Invalid IP address format');
+                isProcessing = false; // Reset on validation error
+                return;
+            }
+            
+            fetch('/api/bitaxe', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name: name, ip: ip})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('bitaxeName').value = '';
+                    document.getElementById('bitaxeIP').value = '';
+                    loadBitaxes();
+                } else {
+                    alert('❌ Error: ' + (data.error || 'Failed to add device'));
+                }
+            })
+            .catch(err => {
+                alert('❌ Connection error: ' + err.message);
+            });
+        }, 'addBitaxe');
+
+        // Remove Bitaxe
+        const removeBitaxe = withDebounce(function(index) {
+            console.log('Removing Bitaxe at index:', index);
+            
+            if (!confirm('⚠️ Remove this Bitaxe device?')) {
+                isProcessing = false; // Reset if user cancels
+                return;
+            }
+            
+            fetch('/api/bitaxe/remove', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({index: index})
+            })
+            .then(response => {
+                console.log('Remove response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Remove response data:', data);
+                if (data.success) {
+                    alert('✅ Device removed successfully!');
+                    loadBitaxes();
+                } else {
+                    alert('❌ Failed to remove: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(err => {
+                console.error('Remove error:', err);
+                alert('❌ Error removing device: ' + err.message);
+            });
+        }, 'removeBitaxe');
+
+        // Test Bitaxe connection
+        function testBitaxe(ip) {
+            alert('🔍 Testing connection to ' + ip + '...\n\nThis will query the Bitaxe API endpoints:\n- /api/system/info\n- /api/system/stats');
+            
+            fetch('/api/bitaxe/test?ip=' + encodeURIComponent(ip))
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ Connection successful!\n\n' + 
+                              'Hashrate: ' + (data.hashrate || 'N/A') + '\n' +
+                              'Temp: ' + (data.temp || 'N/A') + '°C\n' +
+                              'Power: ' + (data.power || 'N/A') + 'W');
+                    } else {
+                        alert('❌ Connection failed:\n' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(err => {
+                    alert('❌ Test failed: ' + err.message);
+                });
+        }
+
+        // Save WiFi configuration
+        function saveWiFi() {
+            const ssid = document.getElementById('wifiSSID').value.trim();
+            const password = document.getElementById('wifiPassword').value;
+            
+            if (!ssid) {
+                alert('⚠️ Please enter WiFi SSID');
+                return;
+            }
+            
+            document.getElementById('wifiSaveText').classList.add('hidden');
+            document.getElementById('wifiSaveSpinner').classList.remove('hidden');
+            
+            fetch('/api/wifi', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ssid: ssid, password: password})
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('wifiSaveText').classList.remove('hidden');
+                document.getElementById('wifiSaveSpinner').classList.add('hidden');
+                
+                if (data.success) {
+                    alert('✅ WiFi configuration saved!\n\nThe device will now restart and connect to your network.');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 3000);
+                } else {
+                    alert('❌ Error: ' + (data.error || 'Failed to save WiFi config'));
+                }
+            })
+            .catch(err => {
+                document.getElementById('wifiSaveText').classList.remove('hidden');
+                document.getElementById('wifiSaveSpinner').classList.add('hidden');
+                alert('❌ Connection error: ' + err.message);
+            });
+        }
+
+        // Reset WiFi configuration and restart in AP mode
+        function resetWiFi() {
+            if (!confirm('⚠️ This will clear your WiFi configuration and restart the device in AP mode.\n\nYou will need to reconnect to "TouchAxe-Setup" network.\n\nContinue?')) {
+                return;
+            }
+            
+            fetch('/api/config/reset', {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ WiFi configuration cleared!\n\nThe device will restart in AP mode.\n\nReconnect to "TouchAxe-Setup" network to reconfigure.');
+                } else {
+                    alert('❌ Error: ' + (data.error || 'Failed to reset config'));
+                }
+            })
+            .catch(err => {
+                // Expected: connection will drop as device restarts
+                alert('✅ Device is restarting in AP mode.\n\nReconnect to "TouchAxe-Setup" network.');
+            });
+        }
+
+        // Factory reset: clear WiFi + Bitaxe + restart
+        function factoryReset() {
+            if (!confirm('⚠️⚠️⚠️ FACTORY RESET ⚠️⚠️⚠️\n\nThis will PERMANENTLY DELETE:\n- WiFi configuration\n- ALL Bitaxe devices\n- ALL settings\n\nThe device will restart in AP mode.\n\nAre you SURE?')) {
+                return;
+            }
+            
+            if (!confirm('⚠️ DERNIÈRE CONFIRMATION\n\nToutes vos données seront effacées.\n\nContinuer?')) {
+                return;
+            }
+            
+            fetch('/api/factory/reset', {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ FACTORY RESET complet!\n\nL\'appareil redémarre en mode AP.\n\nReconnectez-vous au réseau "TouchAxe-Setup".');
+                } else {
+                    alert('❌ Error: ' + (data.error || 'Failed to reset'));
+                }
+            })
+            .catch(err => {
+                // Expected: connection will drop as device restarts
+                alert('✅ Redémarrage en cours...\n\nReconnectez-vous au réseau "TouchAxe-Setup".');
+            });
+        }
+
+        // Clear all Bitaxe devices
+        const clearAllBitaxes = withDebounce(function() {
+            if (!confirm('⚠️ This will remove ALL configured Bitaxe devices.\n\nThis action cannot be undone.\n\nContinue?')) {
+                isProcessing = false; // Reset if user cancels
+                return;
+            }
+            
+            fetch('/api/bitaxe/clear', {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ All Bitaxe devices have been removed!');
+                    loadBitaxes();
+                } else {
+                    alert('❌ Error: ' + (data.error || 'Failed to clear devices'));
+                }
+            })
+            .catch(err => {
+                alert('❌ Error: ' + err.message);
+            });
+        }, 'clearAllBitaxes');
+        
+        // Stop web server
+        function stopWebServer() {
+            if (!confirm('⚠️ This will stop the web server to save resources.\n\nYou can restart it via serial command: "webstart"\n\nContinue?')) {
+                return;
+            }
+            
+            fetch('/api/webserver/stop', {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Web server will stop in 2 seconds.\n\nTo restart: Connect via USB and type "webstart"');
+                } else {
+                    alert('❌ Error: ' + (data.error || 'Failed to stop server'));
+                }
+            })
+            .catch(err => {
+                // Expected: connection will drop as server stops
+                alert('✅ Web server stopped.\n\nTo restart: Serial command "webstart"');
+            });
+        }
+
+        // Initialize
+        createParticles();
+        loadBitaxes();
+        
+        // Refresh bitaxe status every 60 seconds (reduced from 30s to avoid overloading ESP)
+        setInterval(loadBitaxes, 60000);
+    </script>
+</body>
+</html>

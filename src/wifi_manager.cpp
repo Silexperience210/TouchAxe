@@ -39,22 +39,42 @@ void WifiManager::init() {
     if (ssid.length() > 0) {
         Serial.printf("[WiFi] Connecting to %s...\n", ssid.c_str());
         WiFi.mode(WIFI_STA);
-        WiFi.begin(ssid.c_str(), password.c_str());
         
-        // Wait 10 seconds for connection
-        int attempts = 0;
-        while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-            delay(500);
-            Serial.print(".");
-            attempts++;
+        // Retry 5 fois avant de basculer en mode AP
+        int retry_count = 0;
+        const int MAX_RETRIES = 5;
+        bool connected = false;
+        
+        while (retry_count < MAX_RETRIES && !connected) {
+            retry_count++;
+            Serial.printf("[WiFi] Attempt %d/%d...\n", retry_count, MAX_RETRIES);
+            
+            WiFi.begin(ssid.c_str(), password.c_str());
+            
+            // Wait 5 seconds for connection (10 × 500ms)
+            int attempts = 0;
+            while (WiFi.status() != WL_CONNECTED && attempts < 10) {
+                delay(500);
+                Serial.print(".");
+                attempts++;
+            }
+            Serial.println();
+            
+            if (WiFi.status() == WL_CONNECTED) {
+                Serial.printf("[WiFi] Connected! IP: %s\n", WiFi.localIP().toString().c_str());
+                apMode = false;
+                connected = true;
+            } else {
+                Serial.printf("[WiFi] Attempt %d failed\n", retry_count);
+                if (retry_count < MAX_RETRIES) {
+                    Serial.println("[WiFi] Retrying in 1 second...");
+                    delay(1000);
+                }
+            }
         }
-        Serial.println();
         
-        if (WiFi.status() == WL_CONNECTED) {
-            Serial.printf("[WiFi] Connected! IP: %s\n", WiFi.localIP().toString().c_str());
-            apMode = false;
-        } else {
-            Serial.println("[WiFi] Connection failed, starting AP mode");
+        if (!connected) {
+            Serial.println("[WiFi] All connection attempts failed, starting AP mode");
             setupAP();
         }
     } else {

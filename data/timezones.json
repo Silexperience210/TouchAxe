@@ -1,0 +1,12 @@
+{
+    "timezones": [
+        {"name": "Europe/Paris", "offset": "+0100", "dst": true},
+        {"name": "Europe/London", "offset": "+0000", "dst": true},
+        {"name": "Europe/Berlin", "offset": "+0100", "dst": true},
+        {"name": "Europe/Madrid", "offset": "+0100", "dst": true},
+        {"name": "Europe/Rome", "offset": "+0100", "dst": true},
+        {"name": "Europe/Brussels", "offset": "+0100", "dst": true},
+        {"name": "Europe/Amsterdam", "offset": "+0100", "dst": true},
+        {"name": "Europe/Zurich", "offset": "+0100", "dst": true}
+    ]
+}

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TouchAxe - Bitcoin Mining Dashboard</title>
+    <meta name="description" content="Professional Bitcoin mining dashboard for ESP32-S3. Monitor your BitAxe miners in real-time with a sleek, futuristic interface.">
+    
+    <!-- ESP Web Tools -->
+    <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+    
+    <style>
+        :root {
+            --primary-orange: #ff9500;
+            --primary-blue: #00d4ff;
+            --dark-bg: #0a0e27;
+            --card-bg: #1a1f3a;
+            --text-primary: #ffffff;
+            --text-secondary: #a0aec0;
+            --neon-glow: 0 0 20px rgba(255, 149, 0, 0.5);
+            --blue-glow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(255, 149, 0, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 50%, rgba(0, 212, 255, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeInDown 1s ease-out;
+        }
+        
+        .logo {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-orange) 0%, var(--primary-blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: var(--neon-glow);
+            margin-bottom: 0.5rem;
+            letter-spacing: -2px;
+        }
+        
+        .tagline {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+        
+        /* Feature cards */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+            animation: fadeIn 1s ease-out 0.2s backwards;
+        }
+        
+        .feature-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255, 149, 0, 0.05) 0%, rgba(0, 212, 255, 0.05) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary-orange);
+            box-shadow: var(--neon-glow);
+        }
+        
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+        
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+        
+        .feature-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+        
+        .feature-desc {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        /* Install section */
+        .install-section {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            border: 2px solid rgba(255, 149, 0, 0.3);
+            box-shadow: var(--neon-glow);
+            margin-bottom: 3rem;
+            animation: fadeIn 1s ease-out 0.4s backwards;
+        }
+        
+        .install-title {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary-orange) 0%, var(--primary-blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .install-desc {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+        
+        /* Custom style for ESP Web Tools button */
+        esp-web-install-button {
+            --esp-tools-button-color: var(--primary-orange);
+            --esp-tools-button-text-color: white;
+            --esp-tools-button-border-radius: 12px;
+        }
+        
+        esp-web-install-button::part(button) {
+            padding: 1rem 3rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: var(--neon-glow);
+            transition: all 0.3s ease;
+        }
+        
+        esp-web-install-button::part(button):hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(255, 149, 0, 0.8);
+        }
+        
+        /* Requirements */
+        .requirements {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .requirements h3 {
+            color: var(--primary-blue);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+        
+        .requirements ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .requirements li {
+            padding: 0.5rem 0;
+            color: var(--text-secondary);
+        }
+        
+        .requirements li::before {
+            content: '✓ ';
+            color: var(--primary-blue);
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+        
+        /* Specs */
+        .specs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 3rem;
+            animation: fadeIn 1s ease-out 0.6s backwards;
+        }
+        
+        .spec-item {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .spec-icon {
+            font-size: 2rem;
+        }
+        
+        .spec-info h4 {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.3rem;
+        }
+        
+        .spec-info p {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 3rem;
+        }
+        
+        footer a {
+            color: var(--primary-orange);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        footer a:hover {
+            color: var(--primary-blue);
+            text-shadow: var(--blue-glow);
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 2.5rem;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            .install-section {
+                padding: 2rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="logo">⚡ TouchAxe</h1>
+            <p class="tagline">Professional Bitcoin Mining Dashboard for ESP32-S3</p>
+        </header>
+        
+        <div class="features">
+            <div class="feature-card">
+                <span class="feature-icon">📊</span>
+                <h3 class="feature-title">Real-Time Monitoring</h3>
+                <p class="feature-desc">Track hashrate, power consumption, and best difficulty across all your BitAxe miners in real-time.</p>
+            </div>
+            
+            <div class="feature-card">
+                <span class="feature-icon">₿</span>
+                <h3 class="feature-title">Bitcoin Price & Stats</h3>
+                <p class="feature-desc">Live Bitcoin price updates with Sats conversion. Stay informed about market movements.</p>
+            </div>
+            
+            <div class="feature-card">
+                <span class="feature-icon">🎨</span>
+                <h3 class="feature-title">Sleek Interface</h3>
+                <p class="feature-desc">Beautiful 480x272 touchscreen display with ultra-responsive touch controls and elegant animations.</p>
+            </div>
+            
+            <div class="feature-card">
+                <span class="feature-icon">⚙️</span>
+                <h3 class="feature-title">WiFi Management</h3>
+                <p class="feature-desc">Easy configuration portal for adding miners and managing network settings.</p>
+            </div>
+            
+            <div class="feature-card">
+                <span class="feature-icon">⚡</span>
+                <h3 class="feature-title">Power Tracking</h3>
+                <p class="feature-desc">Monitor total power consumption with automatic kW conversion for efficient energy management.</p>
+            </div>
+            
+            <div class="feature-card">
+                <span class="feature-icon">🚀</span>
+                <h3 class="feature-title">Optimized Performance</h3>
+                <p class="feature-desc">Running at 240MHz on ESP32-S3 with debug level 0 for maximum responsiveness.</p>
+            </div>
+        </div>
+        
+        <div class="install-section">
+            <h2 class="install-title">🔥 Flash Your Device</h2>
+            <p class="install-desc">
+                Connect your ESP32-S3 device via USB and click the button below to install TouchAxe firmware directly from your browser.
+            </p>
+            
+            <esp-web-install-button manifest="./firmware/manifest.json">
+                <button slot="activate" style="
+                    background: linear-gradient(135deg, var(--primary-orange) 0%, #ff6b00 100%);
+                    color: white;
+                    border: none;
+                    padding: 1rem 3rem;
+                    font-size: 1.2rem;
+                    font-weight: 600;
+                    border-radius: 12px;
+                    cursor: pointer;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    box-shadow: var(--neon-glow);
+                    transition: all 0.3s ease;
+                ">
+                    ⚡ Install TouchAxe Firmware
+                </button>
+                <span slot="unsupported">
+                    ⚠️ Your browser doesn't support Web Serial API. Please use Chrome, Edge, or Opera.
+                </span>
+                <span slot="not-allowed">
+                    🔒 HTTPS required. Please access this page over a secure connection.
+                </span>
+            </esp-web-install-button>
+            
+            <div class="requirements">
+                <h3>📋 Requirements</h3>
+                <ul>
+                    <li>ESP32-S3 with 480x272 touchscreen (esp32-4827S043C or compatible)</li>
+                    <li>Chrome, Edge, or Opera browser (Web Serial API support)</li>
+                    <li>USB cable for connection</li>
+                    <li>BitAxe ESP-Miner(s) on your network (optional, for mining stats)</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="specs">
+            <div class="spec-item">
+                <span class="spec-icon">💾</span>
+                <div class="spec-info">
+                    <h4>Flash Size</h4>
+                    <p>~1.5 MB</p>
+                </div>
+            </div>
+            
+            <div class="spec-item">
+                <span class="spec-icon">🎯</span>
+                <div class="spec-info">
+                    <h4>Version</h4>
+                    <p>1.0.0</p>
+                </div>
+            </div>
+            
+            <div class="spec-item">
+                <span class="spec-icon">⚙️</span>
+                <div class="spec-info">
+                    <h4>CPU Speed</h4>
+                    <p>240 MHz</p>
+                </div>
+            </div>
+            
+            <div class="spec-item">
+                <span class="spec-icon">📱</span>
+                <div class="spec-info">
+                    <h4>Display</h4>
+                    <p>480×272 Touch</p>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>
+                Made with ⚡ by <a href="https://github.com/Silexperience210" target="_blank">Silexperience210</a><br>
+                <a href="https://github.com/Silexperience210/TouchAxe" target="_blank">View on GitHub</a> | 
+                <a href="https://github.com/Silexperience210/TouchAxe/issues" target="_blank">Report Issues</a>
+            </p>
+            <p style="margin-top: 1rem; font-size: 0.9rem;">
+                Open Source • MIT License • Built with ESP-IDF & LVGL
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

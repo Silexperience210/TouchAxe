@@ -11,6 +11,9 @@ struct BitaxeDevice {
     String name;
     String ip;
     bool online;
+    uint32_t bestDiff;        // Meilleure difficulté trouvée
+    uint32_t bestSessionDiff; // Meilleure difficulté de la session
+    float power;              // Consommation en Watts
 };
 
 class WifiManager {

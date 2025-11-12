@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TouchAxe Firmware Flasher</title>
+    <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Animated electric background */
+        .electric-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse at 20% 30%, rgba(255, 0, 0, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 70%, rgba(255, 20, 20, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(200, 0, 0, 0.08) 0%, transparent 60%);
+            animation: pulse 4s ease-in-out infinite;
+            z-index: 0;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+
+        /* Electric sparks effect */
+        .spark {
+            position: fixed;
+            width: 2px;
+            height: 100px;
+            background: linear-gradient(180deg, 
+                rgba(255, 0, 0, 0) 0%,
+                rgba(255, 40, 40, 0.8) 50%,
+                rgba(255, 0, 0, 0) 100%);
+            animation: spark 3s linear infinite;
+            opacity: 0;
+        }
+
+        @keyframes spark {
+            0% { transform: translateY(-100px); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(100vh); opacity: 0; }
+        }
+
+        .spark:nth-child(1) { left: 10%; animation-delay: 0s; }
+        .spark:nth-child(2) { left: 30%; animation-delay: 1s; }
+        .spark:nth-child(3) { left: 50%; animation-delay: 0.5s; }
+        .spark:nth-child(4) { left: 70%; animation-delay: 1.5s; }
+        .spark:nth-child(5) { left: 90%; animation-delay: 0.8s; }
+
+        /* Main container */
+        .container {
+            position: relative;
+            z-index: 10;
+            max-width: 600px;
+            width: 90%;
+            padding: 40px;
+            background: rgba(10, 10, 10, 0.95);
+            border: 2px solid #ff0000;
+            border-radius: 15px;
+            box-shadow: 
+                0 0 20px rgba(255, 0, 0, 0.5),
+                0 0 40px rgba(255, 0, 0, 0.3),
+                inset 0 0 60px rgba(255, 0, 0, 0.1);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            0% { 
+                box-shadow: 
+                    0 0 20px rgba(255, 0, 0, 0.5),
+                    0 0 40px rgba(255, 0, 0, 0.3),
+                    inset 0 0 60px rgba(255, 0, 0, 0.1);
+            }
+            100% { 
+                box-shadow: 
+                    0 0 30px rgba(255, 0, 0, 0.7),
+                    0 0 60px rgba(255, 0, 0, 0.5),
+                    inset 0 0 80px rgba(255, 0, 0, 0.15);
+            }
+        }
+
+        /* Title styling */
+        h1 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #ff0000, #ff4040, #ff0000);
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradient-shift 3s ease infinite;
+            text-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+            letter-spacing: 3px;
+        }
+
+        @keyframes gradient-shift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #ff4040;
+            font-size: 1rem;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Info box */
+        .info-box {
+            background: rgba(255, 0, 0, 0.05);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .info-box h3 {
+            color: #ff4040;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 0, 0, 0.1);
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #999;
+            font-weight: bold;
+        }
+
+        .info-value {
+            color: #ff4040;
+            font-family: monospace;
+        }
+
+        /* Features list */
+        .features {
+            margin: 25px 0;
+        }
+
+        .features h3 {
+            color: #ff4040;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+        }
+
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .features li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+            color: #ccc;
+        }
+
+        .features li:before {
+            content: "⚡";
+            position: absolute;
+            left: 0;
+            color: #ff0000;
+            font-size: 1.2rem;
+            animation: flicker 2s infinite;
+        }
+
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Flash button container */
+        .flash-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        esp-web-install-button {
+            display: inline-block;
+            margin: 20px auto;
+        }
+
+        /* Custom button styling override */
+        esp-web-install-button::part(button) {
+            background: linear-gradient(135deg, #ff0000, #cc0000);
+            border: 2px solid #ff0000;
+            color: white;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+            box-shadow: 
+                0 0 20px rgba(255, 0, 0, 0.5),
+                0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        esp-web-install-button::part(button):hover {
+            background: linear-gradient(135deg, #ff3333, #ff0000);
+            box-shadow: 
+                0 0 30px rgba(255, 0, 0, 0.8),
+                0 8px 20px rgba(0, 0, 0, 0.4);
+            transform: translateY(-2px);
+        }
+
+        /* Instructions */
+        .instructions {
+            background: rgba(255, 0, 0, 0.05);
+            border: 1px solid rgba(255, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .instructions h3 {
+            color: #ff4040;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .instructions ol {
+            padding-left: 20px;
+            color: #ccc;
+            line-height: 1.8;
+        }
+
+        .instructions li {
+            margin-bottom: 10px;
+        }
+
+        /* Warning box */
+        .warning {
+            background: rgba(255, 100, 0, 0.1);
+            border: 1px solid rgba(255, 100, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .warning:before {
+            content: "⚠️";
+            font-size: 1.5rem;
+        }
+
+        .warning-text {
+            color: #ffaa40;
+            font-size: 0.9rem;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 0, 0, 0.2);
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .footer a {
+            color: #ff4040;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer a:hover {
+            color: #ff6060;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            .container {
+                padding: 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Electric background effects -->
+    <div class="electric-bg"></div>
+    <div class="spark"></div>
+    <div class="spark"></div>
+    <div class="spark"></div>
+    <div class="spark"></div>
+    <div class="spark"></div>
+
+    <!-- Main container -->
+    <div class="container">
+        <h1>⚡ TOUCHAXE ⚡</h1>
+        <div class="subtitle">ESP32 Bitaxe Monitor - Web Flasher</div>
+
+        <!-- Firmware Info -->
+        <div class="info-box">
+            <h3>📦 Firmware Information</h3>
+            <div class="info-item">
+                <span class="info-label">Version:</span>
+                <span class="info-value">1.0.0</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Build Date:</span>
+                <span class="info-value">2025-01-11</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Target Board:</span>
+                <span class="info-value">ESP32-S3 4827S043C</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Flash Size:</span>
+                <span class="info-value">1,521,029 bytes (45.5%)</span>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <div class="features">
+            <h3>✨ Features</h3>
+            <ul>
+                <li>🔗 <strong>Bitaxe API Integration</strong> - Direct monitoring via HTTP API</li>
+                <li>🐝 <strong>Swarm Monitoring</strong> - Track up to 10 CyberHornet/Bitaxe devices</li>
+                <li>💰 Real-time Bitcoin price & Satoshi conversion</li>
+                <li>👆 Touch navigation with pagination</li>
+                <li>⏱️ Auto-refresh every 10-30 seconds</li>
+                <li>🌐 NTP time synchronization</li>
+                <li>📡 Web configuration portal</li>
+                <li>🎨 Futuristic UI with falling red squares animation</li>
+            </ul>
+            <p style="margin-top: 12px; padding: 10px; background: rgba(255,100,0,0.15); border-left: 3px solid #ff6400; font-size: 0.9rem; text-align: left;">
+                🔧 <strong>Powered by <a href="https://bitaxe.org" target="_blank" style="color: #ff6400; text-decoration: none; border-bottom: 1px dashed #ff6400;">Bitaxe</a></strong> - 
+                Open-source Bitcoin mining hardware. TouchAxe integrates with Bitaxe API for comprehensive swarm monitoring.
+            </p>
+        </div>
+
+        <!-- Roadmap -->
+        <div class="features">
+            <h3>🚀 Upcoming Features</h3>
+            <ul>
+                <li>🏠 Home Assistant integration</li>
+                <li>🌡️ Thermostatic probe monitoring</li>
+                <li>🎮 Remote temperature control</li>
+                <li>🐝 Advanced CyberHornet fleet management</li>
+                <li>⚡ Power consumption optimization</li>
+                <li>📈 Mining pool statistics</li>
+            </ul>
+        </div>
+
+        <!-- Flash Button -->
+        <div class="flash-container">
+            <esp-web-install-button manifest="./manifest.json">
+                <button slot="activate" style="
+                    background: linear-gradient(135deg, #ff0000, #cc0000);
+                    border: 2px solid #ff0000;
+                    color: white;
+                    padding: 15px 40px;
+                    font-size: 1.2rem;
+                    font-weight: bold;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    text-transform: uppercase;
+                    letter-spacing: 2px;
+                    transition: all 0.3s;
+                    box-shadow: 0 0 20px rgba(255, 0, 0, 0.5), 0 5px 15px rgba(0, 0, 0, 0.3);
+                    font-family: 'Courier New', monospace;
+                ">
+                    ⚡ FLASH FIRMWARE ⚡
+                </button>
+            </esp-web-install-button>
+        </div>
+
+        <!-- Instructions -->
+        <div class="instructions">
+            <h3>📋 Installation Instructions</h3>
+            <ol>
+                <li>Connect your ESP32-S3 board via USB-C</li>
+                <li>Click the "FLASH FIRMWARE" button above</li>
+                <li>Select your device port from the popup</li>
+                <li>Wait for the installation to complete</li>
+                <li>Board will restart automatically</li>
+                <li>Connect to "TouchAxe-Setup" WiFi to configure</li>
+            </ol>
+        </div>
+
+        <!-- Warning -->
+        <div class="warning">
+            <div class="warning-text">
+                <strong>Important:</strong> This flasher only works with Chrome, Edge, or Opera browsers. 
+                Make sure you're using a compatible browser with Web Serial API support.
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>TouchAxe Firmware Flasher | Made with ⚡ for the Bitcoin Mining Community</p>
+            <p style="margin-top: 10px;">
+                <a href="https://github.com/yourusername/TouchAxe" target="_blank">GitHub Repository</a> | 
+                <a href="https://github.com/yourusername/TouchAxe/issues" target="_blank">Report Issue</a>
+            </p>
+            <p style="margin-top: 15px; color: #ff4040; font-size: 0.85rem;">
+                Developed by <strong>Silexperience</strong> for the Plebs Miners
+            </p>
+            <p style="margin-top: 12px; font-size: 0.9rem; padding: 8px; background: rgba(255,170,0,0.1); border-radius: 8px; border: 1px solid rgba(255,170,0,0.3);">
+                ⚡ <strong>Support this project:</strong> 
+                <a href="lightning:generousmarble35@zeuspay.com" 
+                   style="color: #ffaa00; text-decoration: none; border-bottom: 1px dashed #ffaa00; font-family: monospace;"
+                   onclick="navigator.clipboard.writeText('generousmarble35@zeuspay.com'); alert('⚡ Lightning address copied to clipboard!'); return false;">
+                    generousmarble35@zeuspay.com
+                </a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

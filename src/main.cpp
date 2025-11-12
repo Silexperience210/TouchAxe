@@ -334,11 +334,16 @@ void loop() {
         UI::getInstance().updateClock();
     }
     
-    // Check Bitaxe status every 15 seconds (only if connected to WiFi, not in AP mode, and on CLOCK_SCREEN)
+    // ANIMATION MANUELLE des carrés - SEULEMENT sur Clock screen !
+    // Désactivée automatiquement sur Miners pour meilleures performances
+    UI::getInstance().updateFallingSquares();
+    
+    // Check Bitaxe status every 15 seconds - SEULEMENT sur Clock screen !
+    // (skip sur Miners pour éviter conflits HTTP)
     static uint32_t last_bitaxe_check = 0;
     if (!WifiManager::getInstance()->isAPMode() && millis() - last_bitaxe_check > 15000) {
         last_bitaxe_check = millis();
-        UI::getInstance().checkBitaxeStatus();
+        UI::getInstance().checkBitaxeStatus();  // Cette fonction vérifie déjà current_screen
     }
     
     // Refresh Miners screen data every 10 seconds (only when on MINERS_SCREEN)
@@ -367,16 +372,23 @@ void loop() {
         }
     }
     
-    // LVGL timer handler - gère l'affichage ET les inputs
-    // Doit être appelé le plus souvent possible pour la réactivité
-    lv_timer_handler();
+    // *** OPTIMIZED: Call lv_timer_handler() every 10ms instead of every millisecond ***
+    // LVGL recommends 5-10ms intervals for smooth operation with much better CPU efficiency
+    static uint32_t last_lvgl_call = 0;
+    uint32_t now = millis();
+    if (now - last_lvgl_call >= 10) {
+        last_lvgl_call = now;
+        lv_timer_handler();
+    }
     
-    // Forcer la lecture de l'input device
+    // Touch input lu à CHAQUE loop pour maximum de réactivité (<1ms latence)
     if (indev_touchpad != nullptr) {
         lv_indev_read(indev_touchpad);
     }
     
-    // Delay minimum pour ne pas saturer le CPU
-    delay(1);
+    // Animation update appelée à chaque loop pour fluidité
+    UI::getInstance().updateFallingSquares();
+    
+    // NO DELAY - ESP32-S3 @ 240MHz handles this easily
 }
 

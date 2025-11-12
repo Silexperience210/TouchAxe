@@ -17,9 +17,26 @@ static lv_obj_t *hashrate_total_label = nullptr;
 static lv_obj_t *hashrate_sum_label = nullptr;  // Somme des hashrates en GH/s
 static lv_obj_t *bitcoin_price_label = nullptr;  // Prix du Bitcoin en USD
 static lv_obj_t *sats_conversion_label = nullptr;  // Conversion 1$ en Sats
+static lv_obj_t *best_diff_label = nullptr;  // Meilleure difficulté des miners
+static lv_obj_t *total_power_label = nullptr;  // Consommation totale des miners
 static lv_obj_t *bitaxe_container = nullptr;
 static lv_obj_t *btn_scroll_up = nullptr;  // Bouton scroll UP sur Miners screen
 static lv_obj_t *btn_scroll_down = nullptr;  // Bouton scroll DOWN sur Miners screen
+
+// Carrés tombants style Matrix/Tetris - ANIMATION MANUELLE (comme l'horloge)
+#define FALLING_SQUARES_COUNT 10  // Réduit à 10 pour meilleures perfs
+
+struct FallingSquare {
+    lv_obj_t* obj;
+    int start_y;
+    int end_y;
+    uint32_t start_time;
+    uint32_t duration;
+    bool active;
+};
+
+static FallingSquare falling_squares[FALLING_SQUARES_COUNT];
+static bool squares_animation_active = false;
 
 // Index pour la pagination des mineurs (afficher 2 mineurs à la fois)
 static int miners_display_offset = 0;
@@ -229,6 +246,110 @@ static void anim_opa_cb(void * var, int32_t v) {
     lv_obj_set_style_opa((lv_obj_t*)var, v, 0);
 }
 
+// UPDATE MANUEL des animations - appelé depuis loop() comme updateClock()
+static void updateFallingSquaresInternal() {
+    if (!squares_animation_active) return;
+    
+    // SEULEMENT sur l'écran Clock - pas sur Miners !
+    if (current_screen != CLOCK_SCREEN) return;
+    
+    uint32_t now = millis();
+    
+    for (int i = 0; i < FALLING_SQUARES_COUNT; i++) {
+        if (!falling_squares[i].active || !falling_squares[i].obj) continue;
+        
+        uint32_t elapsed = now - falling_squares[i].start_time;
+        
+        if (elapsed >= falling_squares[i].duration) {
+            // Animation terminée - repositionner en haut
+            int new_x = rand() % 480;
+            int new_y = -(rand() % 100);
+            lv_obj_set_pos(falling_squares[i].obj, new_x, new_y);
+            
+            // Redémarrer l'animation
+            falling_squares[i].start_y = new_y;
+            falling_squares[i].end_y = 300;
+            falling_squares[i].start_time = now;
+            falling_squares[i].duration = 3000 + (rand() % 2000);  // 3-5 secondes
+        } else {
+            // Calculer la position actuelle (interpolation linéaire)
+            float progress = (float)elapsed / (float)falling_squares[i].duration;
+            int current_y = falling_squares[i].start_y + 
+                           (int)((falling_squares[i].end_y - falling_squares[i].start_y) * progress);
+            lv_obj_set_y(falling_squares[i].obj, current_y);
+        }
+    }
+}
+
+// Fonction pour créer les carrés tombants (effet Matrix/Tetris)
+static void createFallingSquares(lv_obj_t* parent) {
+    Serial.println("[UI] Creating falling squares effect...");
+    
+    for (int i = 0; i < FALLING_SQUARES_COUNT; i++) {
+        // Créer un carré
+        lv_obj_t* square = lv_obj_create(parent);
+        
+        // IMPORTANT: Déplacer en ARRIÈRE-PLAN
+        lv_obj_move_background(square);
+        
+        // Flags
+        lv_obj_remove_flag(square, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_remove_flag(square, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(square, LV_OBJ_FLAG_IGNORE_LAYOUT);
+        lv_obj_add_flag(square, LV_OBJ_FLAG_FLOATING);
+        
+        // Taille aléatoire légèrement plus petite (3 à 15 pixels)
+        int size = 3 + (rand() % 13);
+        lv_obj_set_size(square, size, size);
+        
+        // Style: carré rouge avec opacité variable
+        lv_obj_set_style_bg_color(square, lv_color_hex(0xFF0000), 0);
+        lv_obj_set_style_bg_opa(square, 60 + (rand() % 100), 0);  // 60-160 opacité
+        lv_obj_set_style_border_width(square, 1, 0);
+        lv_obj_set_style_border_color(square, lv_color_hex(0xFF4040), 0);
+        lv_obj_set_style_border_opa(square, 100, 0);
+        lv_obj_set_style_radius(square, 2, 0);  // Coins légèrement arrondis
+        lv_obj_set_style_pad_all(square, 0, 0);
+        
+        // Glow subtil
+        lv_obj_set_style_shadow_width(square, 6, 0);
+        lv_obj_set_style_shadow_color(square, lv_color_hex(0xFF0000), 0);
+        lv_obj_set_style_shadow_opa(square, 60, 0);
+        
+        // Position initiale: X aléatoire, Y en haut (hors écran)
+        int start_x = rand() % 480;
+        int start_y = -(rand() % 200);  // Commence au-dessus de l'écran
+        lv_obj_set_pos(square, start_x, start_y);
+        
+        Serial.printf("[UI] Square %d: size=%dpx, pos=(%d,%d)\n", i, size, start_x, start_y);
+        
+        // ANIMATION MANUELLE - comme pour l'horloge !
+        falling_squares[i].obj = square;
+        falling_squares[i].start_y = start_y;
+        falling_squares[i].end_y = 300;
+        falling_squares[i].start_time = millis();
+        falling_squares[i].duration = 3000 + (rand() % 2000);  // 3-5 secondes
+        falling_squares[i].active = true;
+        
+        Serial.printf("[UI] Square %d animation setup (manual millis())\n", i);
+    }
+    
+    Serial.println("[UI] *** Falling squares effect created! ***");
+    squares_animation_active = true;  // ACTIVER les updates manuels
+}
+
+// Fonction pour nettoyer les carrés
+static void cleanupFallingSquares() {
+    squares_animation_active = false;
+    for (int i = 0; i < FALLING_SQUARES_COUNT; i++) {
+        if (falling_squares[i].obj != nullptr) {
+            lv_obj_delete(falling_squares[i].obj);
+            falling_squares[i].obj = nullptr;
+            falling_squares[i].active = false;
+        }
+    }
+}
+
 // Callback pour le bouton "Continuer"
 void UI::init() {
     Serial.println("[UI] Initializing UI...");
@@ -313,7 +434,7 @@ static void screen_touch_cb(lv_event_t * e) {
         // Début du toucher : enregistrer position et temps
         touch_start_x = point.x;
         last_touch_time = now;
-        Serial.printf("[TOUCH] Pressed at X=%d, current_screen=%d\n", point.x, current_screen);
+        Serial.printf("[TOUCH] Pressed at X=%d Y=%d, current_screen=%d\n", point.x, point.y, current_screen);
     }
     else if (code == LV_EVENT_RELEASED) {
         // Clic court : changer d'écran selon la moitié gauche/droite
@@ -325,19 +446,13 @@ static void screen_touch_cb(lv_event_t * e) {
         
         // Clic rapide sans mouvement (<30px, <500ms)
         if (dx < 30 && duration < 500) {
-            if (point.x < 240 && current_screen == MINERS_SCREEN) {
-                // Clic gauche sur écran Miners → retour Clock
+            if (point.x < 200 && current_screen == MINERS_SCREEN) {
+                // Clic GAUCHE sur écran Miners → retour Clock
                 Serial.println("[UI] *** CLICK LEFT - SCHEDULING CLOCK ***");
                 pending_screen_change = true;
                 pending_screen_target = 1;  // CLOCK
-            }
-            else if (point.x > 240 && current_screen == CLOCK_SCREEN) {
-                // Clic droit sur écran Clock → afficher Miners
-                Serial.println("[UI] *** CLICK RIGHT - SCHEDULING MINERS ***");
-                pending_screen_change = true;
-                pending_screen_target = 2;  // MINERS
             } else {
-                Serial.printf("[TOUCH] No action: X=%d, screen=%d\n", point.x, current_screen);
+                Serial.printf("[TOUCH] No action: X=%d Y=%d, screen=%d\n", point.x, point.y, current_screen);
             }
         } else {
             Serial.printf("[TOUCH] Ignored: dx=%d, duration=%d\n", dx, duration);
@@ -346,10 +461,15 @@ static void screen_touch_cb(lv_event_t * e) {
 }
 
 void UI::showClockScreen() {
-    Serial.println("[UI] Showing clock screen...");
+    Serial.println("[UI] ========== Showing clock screen ==========");
+    
+    // Nettoyer les carrés tombants de l'écran précédent
+    Serial.println("[UI] Cleaning up old falling squares...");
+    cleanupFallingSquares();
     
     // Nettoyer l'écran actuel
     lv_obj_t* scr = lv_screen_active();
+    Serial.println("[UI] Cleaning screen...");
     lv_obj_clean(scr);
     
     // Réinitialiser les pointeurs
@@ -357,6 +477,8 @@ void UI::showClockScreen() {
     date_label = nullptr;
     bitcoin_price_label = nullptr;
     sats_conversion_label = nullptr;
+    best_diff_label = nullptr;
+    total_power_label = nullptr;
     hashrate_total_label = nullptr;
     hashrate_sum_label = nullptr;
     bitaxe_container = nullptr;
@@ -364,6 +486,15 @@ void UI::showClockScreen() {
     btn_scroll_down = nullptr;
     
     lv_obj_set_style_bg_color(scr, lv_color_hex(0x000000), 0);  // Fond noir
+    
+    Serial.println("[UI] *** CALLING createFallingSquares() ***");
+    // Créer les carrés tombants en arrière-plan (effet Matrix/Tetris)
+    createFallingSquares(scr);
+    Serial.println("[UI] *** createFallingSquares() RETURNED ***");
+    
+    // RÉACTIVER l'animation des carrés pour l'écran Clock
+    squares_animation_active = true;
+    Serial.println("[UI] Falling squares animation RESUMED for Clock screen");
     
     // Récupérer l'heure et la date depuis TimeManager
     TimeManager* tm = TimeManager::getInstance();
@@ -418,6 +549,40 @@ void UI::showClockScreen() {
     lv_obj_set_style_bg_color(sats_conversion_label, lv_color_hex(0x001a14), 0);  // Fond sombre légèrement vert
     lv_obj_set_style_bg_opa(sats_conversion_label, LV_OPA_60, 0);
     
+    // Best Diff en bas à gauche - Même style que BTC/Sats
+    best_diff_label = lv_label_create(scr);
+    lv_label_set_text(best_diff_label, "Best Diff\n---");
+    lv_obj_set_style_text_font(best_diff_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(best_diff_label, lv_color_hex(0xFFAA00), 0);  // Orange doré pour mining
+    lv_obj_set_style_text_align(best_diff_label, LV_TEXT_ALIGN_LEFT, 0);
+    lv_obj_align(best_diff_label, LV_ALIGN_BOTTOM_LEFT, 15, -8);  // Coin bas-gauche, marge 15px
+    
+    // Style futuriste identique: bordure subtile avec ombre
+    lv_obj_set_style_border_width(best_diff_label, 1, 0);
+    lv_obj_set_style_border_color(best_diff_label, lv_color_hex(0xFFAA00), 0);
+    lv_obj_set_style_border_opa(best_diff_label, LV_OPA_40, 0);
+    lv_obj_set_style_pad_all(best_diff_label, 4, 0);
+    lv_obj_set_style_radius(best_diff_label, 4, 0);
+    lv_obj_set_style_bg_color(best_diff_label, lv_color_hex(0x1a1400), 0);  // Fond sombre légèrement orange
+    lv_obj_set_style_bg_opa(best_diff_label, LV_OPA_60, 0);
+    
+    // Consommation totale juste au-dessus de Best Diff
+    total_power_label = lv_label_create(scr);
+    lv_label_set_text(total_power_label, "\xE2\x9A\xA1 ---W");  // ⚡ + watts (UTF-8)
+    lv_obj_set_style_text_font(total_power_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(total_power_label, lv_color_hex(0xFF3300), 0);  // Rouge-orange vif pour l'électricité
+    lv_obj_set_style_text_align(total_power_label, LV_TEXT_ALIGN_LEFT, 0);
+    lv_obj_align(total_power_label, LV_ALIGN_BOTTOM_LEFT, 15, -50);  // 42px au-dessus de Best Diff
+    
+    // Style futuriste identique
+    lv_obj_set_style_border_width(total_power_label, 1, 0);
+    lv_obj_set_style_border_color(total_power_label, lv_color_hex(0xFF3300), 0);
+    lv_obj_set_style_border_opa(total_power_label, LV_OPA_40, 0);
+    lv_obj_set_style_pad_all(total_power_label, 4, 0);
+    lv_obj_set_style_radius(total_power_label, 4, 0);
+    lv_obj_set_style_bg_color(total_power_label, lv_color_hex(0x1a0500), 0);  // Fond sombre légèrement rouge
+    lv_obj_set_style_bg_opa(total_power_label, LV_OPA_60, 0);
+    
     // Hashrate total (somme en GH/s) sous la date
     hashrate_sum_label = lv_label_create(scr);
     lv_label_set_text(hashrate_sum_label, "0.0 GH/s");
@@ -445,14 +610,55 @@ void UI::showClockScreen() {
     lv_obj_set_style_text_color(hashrate_total_label, lv_color_hex(0x00FF00), 0);
     lv_obj_align(hashrate_total_label, LV_ALIGN_CENTER, 0, 85);
     
-    // Indicateur de swipe en bas
-    lv_obj_t* swipe_hint = lv_label_create(scr);
-    lv_label_set_text(swipe_hint, LV_SYMBOL_LEFT " Click for miners details");
-    lv_obj_set_style_text_font(swipe_hint, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(swipe_hint, lv_color_hex(0x404040), 0);
-    lv_obj_align(swipe_hint, LV_ALIGN_BOTTOM_MID, 0, -10);
+    // Bouton futuriste À DROITE (vertical, style avion de chasse)
+    lv_obj_t* click_hint_container = lv_obj_create(scr);
+    lv_obj_set_size(click_hint_container, 70, 180);  // Vertical : 70px large, 180px haut
     
-    // Détecter les clics pour navigation
+    // Style futuriste avec bords ciselés
+    lv_obj_set_style_bg_color(click_hint_container, lv_color_hex(0x0a0a0a), 0);
+    lv_obj_set_style_bg_opa(click_hint_container, 200, 0);
+    
+    // Bordures ciselées (pas de radius pour effet anguleux)
+    lv_obj_set_style_radius(click_hint_container, 0, 0);
+    lv_obj_set_style_border_width(click_hint_container, 2, 0);
+    lv_obj_set_style_border_color(click_hint_container, lv_color_hex(0xFF0000), 0);
+    lv_obj_set_style_border_opa(click_hint_container, 180, 0);
+    
+    // Bordures ciselées diagonales (effet avion de chasse)
+    lv_obj_set_style_outline_width(click_hint_container, 1, 0);
+    lv_obj_set_style_outline_color(click_hint_container, lv_color_hex(0xFF4040), 0);
+    lv_obj_set_style_outline_opa(click_hint_container, 120, 0);
+    lv_obj_set_style_outline_pad(click_hint_container, 3, 0);
+    
+    // Ombre rouge intense (glow futuriste)
+    lv_obj_set_style_shadow_width(click_hint_container, 20, 0);
+    lv_obj_set_style_shadow_color(click_hint_container, lv_color_hex(0xFF0000), 0);
+    lv_obj_set_style_shadow_opa(click_hint_container, 120, 0);
+    lv_obj_set_style_shadow_spread(click_hint_container, 3, 0);
+    
+    lv_obj_set_style_pad_all(click_hint_container, 8, 0);
+    
+    // Positionné à DROITE, légèrement en dessous du centre
+    lv_obj_align(click_hint_container, LV_ALIGN_RIGHT_MID, -10, 30);
+    
+    // Texte vertical avec flèche
+    lv_obj_t* swipe_hint = lv_label_create(click_hint_container);
+    lv_label_set_text(swipe_hint, LV_SYMBOL_RIGHT "\n\nM\nI\nN\nE\nR\nS");  // Texte vertical
+    lv_obj_set_style_text_font(swipe_hint, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(swipe_hint, lv_color_hex(0xFF3030), 0);
+    lv_obj_set_style_text_align(swipe_hint, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_center(swipe_hint);
+    
+    // Rendre le bouton rouge CLIQUABLE pour aller vers Miners
+    lv_obj_add_flag(click_hint_container, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(click_hint_container, [](lv_event_t * e) {
+        if(lv_event_get_code(e) == LV_EVENT_CLICKED) {
+            Serial.println("[UI] *** RED BUTTON CLICKED - Going to Miners ***");
+            UI::getInstance().showMinersScreen();
+        }
+    }, LV_EVENT_CLICKED, nullptr);
+    
+    // Détecter les clics sur le reste de l'écran (zone gauche pour retour éventuel)
     lv_obj_add_event_cb(scr, screen_touch_cb, LV_EVENT_PRESSED, nullptr);
     lv_obj_add_event_cb(scr, screen_touch_cb, LV_EVENT_RELEASED, nullptr);
     lv_obj_add_flag(scr, LV_OBJ_FLAG_CLICKABLE);  // Nécessaire pour recevoir les events touch
@@ -464,10 +670,10 @@ void UI::showClockScreen() {
     // IMPORTANT: Définir current_screen AVANT d'appeler le callback du timer
     current_screen = CLOCK_SCREEN;
     
-    // Créer ou reprendre le timer LVGL pour mettre à jour l'horloge toutes les secondes
+    // Créer ou reprendre le timer LVGL pour mettre à jour l'horloge toutes les 15 secondes
     if (time_update_timer == nullptr) {
-        Serial.println("[UI] Creating time update timer (1s interval)");
-        time_update_timer = lv_timer_create(update_time_cb, 1000, NULL);  // Toutes les secondes
+        Serial.println("[UI] Creating time update timer (15s interval)");
+        time_update_timer = lv_timer_create(update_time_cb, 15000, NULL);  // Toutes les 15 secondes
         if (time_update_timer != nullptr) {
             // CRITICAL: Force infinite repeat (LVGL v9 doc)
             lv_timer_set_repeat_count(time_update_timer, -1);
@@ -488,6 +694,10 @@ void UI::showClockScreen() {
 
 void UI::showMinersScreen() {
     Serial.println("[UI] Showing miners screen...");
+    
+    // DÉSACTIVER l'animation des carrés pour meilleures performances
+    squares_animation_active = false;
+    Serial.println("[UI] Falling squares animation PAUSED for Miners screen");
     
     // Pause le timer de l'horloge pour économiser CPU
     if (time_update_timer != nullptr) {
@@ -618,8 +828,8 @@ void UI::showMinersScreen() {
     
     // Bouton Back centré en bas (refresh automatique toutes les 10s)
     lv_obj_t* btn_back = lv_button_create(scr);
-    lv_obj_set_size(btn_back, 140, 40);
-    lv_obj_align(btn_back, LV_ALIGN_BOTTOM_MID, 0, -10);  // Centré en bas
+    lv_obj_set_size(btn_back, 120, 40);
+    lv_obj_align(btn_back, LV_ALIGN_BOTTOM_LEFT, 15, -10);  // Gauche en bas
     lv_obj_set_style_bg_color(btn_back, lv_color_hex(0x333333), 0);
     lv_obj_add_flag(btn_back, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(btn_back, [](lv_event_t * e) {
@@ -634,10 +844,38 @@ void UI::showMinersScreen() {
     lv_label_set_text(label_back, LV_SYMBOL_LEFT " Back");
     lv_obj_center(label_back);
     
+    // Bouton Config (réactive le serveur web) - petit, à droite du Back
+    lv_obj_t* btn_config = lv_button_create(scr);
+    lv_obj_set_size(btn_config, 110, 40);
+    lv_obj_align(btn_config, LV_ALIGN_BOTTOM_RIGHT, -15, -10);  // Droite en bas
+    lv_obj_set_style_bg_color(btn_config, lv_color_hex(0x004080), 0);  // Bleu discret
+    lv_obj_set_style_border_width(btn_config, 1, 0);
+    lv_obj_set_style_border_color(btn_config, lv_color_hex(0x0080FF), 0);
+    lv_obj_add_flag(btn_config, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(btn_config, [](lv_event_t * e) {
+        if(lv_event_get_code(e) == LV_EVENT_CLICKED) {
+            Serial.println("[UI] Config button - starting web server");
+            WifiManager* wifi = WifiManager::getInstance();
+            wifi->startWebServer();
+            
+            // Afficher message temporaire avec l'IP
+            String ip = wifi->isAPMode() ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
+            Serial.printf("[UI] Web server running at: http://%s\n", ip.c_str());
+            
+            // TODO: Afficher toast/notification avec l'IP (optionnel)
+        }
+    }, LV_EVENT_CLICKED, nullptr);
+    
+    lv_obj_t* label_config = lv_label_create(btn_config);
+    lv_label_set_text(label_config, LV_SYMBOL_SETTINGS " Config");
+    lv_obj_set_style_text_font(label_config, &lv_font_montserrat_14, 0);
+    lv_obj_center(label_config);
+    
     // Ensure buttons are on top of all other elements
     lv_obj_move_foreground(btn_scroll_up);
     lv_obj_move_foreground(btn_scroll_down);
     lv_obj_move_foreground(btn_back);
+    lv_obj_move_foreground(btn_config);
     
     // Animation de pulsation pour le halo des boutons UP/DOWN
     lv_anim_t anim_up, anim_down;
@@ -853,6 +1091,11 @@ void UI::updateBitcoinPrice() {
     lv_refr_now(NULL);  // Force immediate redraw
 }
 
+// Public method to update falling squares animation (manual, like updateClock)
+void UI::updateFallingSquares() {
+    updateFallingSquaresInternal();
+}
+
 // Public method to check Bitaxe status periodically (called from main loop)
 void UI::checkBitaxeStatus() {
     WifiManager* wifi = WifiManager::getInstance();
@@ -881,6 +1124,8 @@ void UI::checkBitaxeStatus() {
     
     int onlineCount = 0;
     float totalHashrate = 0.0;
+    float totalPower = 0.0;    // Consommation totale en Watts
+    uint32_t maxBestDiff = 0;  // Track highest bestDiff across all miners
     
     // Quick check each device
     for (int i = 0; i < bitaxeCount; i++) {
@@ -898,15 +1143,30 @@ void UI::checkBitaxeStatus() {
         if (success) {
             onlineCount++;
             totalHashrate += stats.hashrate;
-            Serial.printf("[UI]   [%d] %s - ONLINE (%.1f GH/s, %.1f°C)\n", 
-                i, device->name.c_str(), stats.hashrate, stats.temp);
+            totalPower += stats.power;
+            
+            // Store stats in device structure
+            device->bestDiff = stats.bestDiff;
+            device->bestSessionDiff = stats.bestDiff;
+            device->power = stats.power;
+            
+            // Track maximum across all miners
+            if (stats.bestDiff > maxBestDiff) {
+                maxBestDiff = stats.bestDiff;
+            }
+            
+            Serial.printf("[UI]   [%d] %s - ONLINE (%.1f GH/s, %.1f°C, %.1fW, bestDiff=%u)\n", 
+                i, device->name.c_str(), stats.hashrate, stats.temp, stats.power, stats.bestDiff);
         } else {
             Serial.printf("[UI]   [%d] %s - OFFLINE (%s)\n", 
                 i, device->name.c_str(), device->ip.c_str());
+            device->bestDiff = 0;
+            device->bestSessionDiff = 0;
+            device->power = 0;
         }
     }
     
-    Serial.printf("[UI] Total: %d online, %.1f GH/s\n", onlineCount, totalHashrate);
+    Serial.printf("[UI] Total: %d online, %.1f GH/s, %.1fW, Best Diff=%u\n", onlineCount, totalHashrate, totalPower, maxBestDiff);
     
     // Update clock screen labels if we're on it
     if (current_screen == CLOCK_SCREEN) {
@@ -924,6 +1184,56 @@ void UI::checkBitaxeStatus() {
             snprintf(hashrate_text, sizeof(hashrate_text), "%d miners online", onlineCount);
             lv_label_set_text(hashrate_total_label, hashrate_text);
             lv_obj_invalidate(hashrate_total_label);
+        }
+        
+        // Update Best Diff display (format simplifié avec unité)
+        if (best_diff_label != NULL) {
+            char diff_text[64];
+            if (maxBestDiff > 0) {
+                // Format simplifié avec unités M/G/T pour lisibilité
+                if (maxBestDiff >= 1000000000000ULL) {
+                    // Tera (billions): 1.2T
+                    float value = maxBestDiff / 1000000000000.0;
+                    snprintf(diff_text, sizeof(diff_text), "Best Diff\n%.1fT", value);
+                } else if (maxBestDiff >= 1000000000) {
+                    // Giga (milliards): 72.6G
+                    float value = maxBestDiff / 1000000000.0;
+                    snprintf(diff_text, sizeof(diff_text), "Best Diff\n%.1fG", value);
+                } else if (maxBestDiff >= 1000000) {
+                    // Mega (millions): 997.3M
+                    float value = maxBestDiff / 1000000.0;
+                    snprintf(diff_text, sizeof(diff_text), "Best Diff\n%.1fM", value);
+                } else if (maxBestDiff >= 1000) {
+                    // Kilo (milliers): 123.5K
+                    float value = maxBestDiff / 1000.0;
+                    snprintf(diff_text, sizeof(diff_text), "Best Diff\n%.1fK", value);
+                } else {
+                    // Moins de 1000
+                    snprintf(diff_text, sizeof(diff_text), "Best Diff\n%u", maxBestDiff);
+                }
+            } else {
+                snprintf(diff_text, sizeof(diff_text), "Best Diff\n---");
+            }
+            lv_label_set_text(best_diff_label, diff_text);
+            lv_obj_invalidate(best_diff_label);
+        }
+        
+        // Update Total Power display
+        if (total_power_label != NULL) {
+            char power_text[64];
+            if (totalPower > 0) {
+                if (totalPower >= 1000) {
+                    // Plus de 1kW: afficher en kW
+                    snprintf(power_text, sizeof(power_text), "\xE2\x9A\xA1 %.2fkW", totalPower / 1000.0);
+                } else {
+                    // Moins de 1kW: afficher en W
+                    snprintf(power_text, sizeof(power_text), "\xE2\x9A\xA1 %.0fW", totalPower);
+                }
+            } else {
+                snprintf(power_text, sizeof(power_text), "\xE2\x9A\xA1 ---W");
+            }
+            lv_label_set_text(total_power_label, power_text);
+            lv_obj_invalidate(total_power_label);
         }
     }
 }

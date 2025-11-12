@@ -12,25 +12,16 @@
 /* Display resolution */
 #define LV_HOR_RES_MAX 480
 #define LV_VER_RES_MAX 272
-#define LV_DISP_DEF_REFR_PERIOD 33  // ~30 FPS (1000ms / 30fps = 33ms) - compromis CPU/réactivité
-#define LV_TICK_CUSTOM 0
+#define LV_DISP_DEF_REFR_PERIOD 30
 
-/* *** CRITICAL: ENABLE ANIMATIONS *** */
-#define LV_USE_ANIM 1
-#define LV_ANIM_DEFAULT_TIME 500
+/* Tick source (0 = default) */
+#define LV_TICK_CUSTOM 0
 
 /* Software renderer */
 #define LV_USE_DRAW_SW 1
 #define LV_DRAW_COMPLEX 1
 #define LV_DRAW_SW_ROTATE 1
-
-/* Disable ARM-specific accelerations */
-#define LV_USE_DRAW_ARM2D 0
-#define LV_USE_DRAW_DMA2D 0
-#define LV_USE_DRAW_NEMA_GFX 0
-#define LV_USE_DRAW_OPENGLES 0
-#define LV_USE_DRAW_VG_LITE 0
-#define LV_DRAW_SW_SUPPORT_HELIUM 0
+#define LV_USE_DRAW_SW_HELIUM 0  // Helium assembly off for ESP32-S3
 
 /* Monitors */
 #define LV_USE_PERF_MONITOR 0

@@ -1,0 +1,80 @@
+{
+    "en": {
+        "title": "TouchAxe Configuration",
+        "time": {
+            "title": "Time Settings",
+            "timezone": "Time Zone",
+            "current": "Current Time"
+        },
+        "bitaxe": {
+            "title": "BitAxe Management",
+            "name": "Name",
+            "address": "Address",
+            "namePlaceholder": "BitAxe #1",
+            "addressPlaceholder": "192.168.1.100",
+            "add": "Add",
+            "configured": "Configured BitAxes",
+            "enable": "Enable",
+            "disable": "Disable",
+            "delete": "Delete"
+        },
+        "language": {
+            "title": "Language",
+            "en": "English",
+            "fr": "French",
+            "es": "Spanish"
+        }
+    },
+    "fr": {
+        "title": "Configuration TouchAxe",
+        "time": {
+            "title": "Configuration Horaire",
+            "timezone": "Fuseau horaire",
+            "current": "Heure actuelle"
+        },
+        "bitaxe": {
+            "title": "Gestion des BitAxes",
+            "name": "Nom",
+            "address": "Adresse",
+            "namePlaceholder": "BitAxe #1",
+            "addressPlaceholder": "192.168.1.100",
+            "add": "Ajouter",
+            "configured": "BitAxes configurés",
+            "enable": "Activer",
+            "disable": "Désactiver",
+            "delete": "Supprimer"
+        },
+        "language": {
+            "title": "Langue",
+            "en": "Anglais",
+            "fr": "Français",
+            "es": "Espagnol"
+        }
+    },
+    "es": {
+        "title": "Configuración de TouchAxe",
+        "time": {
+            "title": "Configuración de Hora",
+            "timezone": "Zona Horaria",
+            "current": "Hora Actual"
+        },
+        "bitaxe": {
+            "title": "Gestión de BitAxes",
+            "name": "Nombre",
+            "address": "Dirección",
+            "namePlaceholder": "BitAxe #1",
+            "addressPlaceholder": "192.168.1.100",
+            "add": "Añadir",
+            "configured": "BitAxes Configurados",
+            "enable": "Activar",
+            "disable": "Desactivar",
+            "delete": "Eliminar"
+        },
+        "language": {
+            "title": "Idioma",
+            "en": "Inglés",
+            "fr": "Francés",
+            "es": "Español"
+        }
+    }
+}

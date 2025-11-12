@@ -86,11 +86,11 @@ bool TimeManager::setTimezone(const String& timezone) {
 String TimeManager::getFormattedTime() {
     struct tm timeinfo;
     if (!getLocalTime(&timeinfo)) {
-        return "??:??:??";
+        return "??:??";
     }
     
-    char timeStr[9];
-    strftime(timeStr, sizeof(timeStr), "%H:%M:%S", &timeinfo);
+    char timeStr[6];
+    strftime(timeStr, sizeof(timeStr), "%H:%M", &timeinfo);
     return String(timeStr);
 }
 
