@@ -6,6 +6,9 @@
     <title>TouchAxe - Swarm Thermostat & Bitcoin Miner Dashboard</title>
     <meta name="description" content="TouchAxe: Open-source touchscreen thermostat for BitAxe miners. Monitor, control, and heat your swarm with fire.">
 
+    <!-- PRÉCHARGEMENT DE LA POLICE (obligatoire pour éviter le double) -->
+    <link rel="preload" href="assets/fonts/AngelWish.ttf" as="font" type="font/ttf" crossorigin>
+
     <!-- ANGEL WISH .TTF -->
     <style>
         @font-face {
@@ -13,12 +16,9 @@
             src: url('assets/fonts/AngelWish.ttf') format('truetype');
             font-weight: normal;
             font-style: normal;
-            font-display: swap;
+            font-display: block; /* Attente complète → pas de double police */
         }
     </style>
-
-    <!-- Fallback -->
-    <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap" rel="stylesheet">
 
     <!-- ESP Web Tools -->
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
@@ -118,14 +118,14 @@
             z-index: 2;
         }
 
-        /* === LOGO BLANC, GROS, SANS A === */
+        /* === LOGO CORRIGÉ : ANGEL WISH PUR, SANS DOUBLE, SANS A === */
         header {
             text-align: center;
             margin-bottom: 6rem;
         }
 
         .logo {
-            font-family: 'Angel Wish', 'UnifrakturMaguntia', cursive;
+            font-family: 'Angel Wish', sans-serif; /* AUCUN FALLBACK VISUEL */
             font-size: 7.5rem;
             font-weight: normal;
             color: #ffffff;
@@ -345,7 +345,7 @@
     <div class="container">
         <!-- HEADER -->
         <header>
-            <h1 class="logo">Touchaxe</h1>
+            <h1 class="logo">TouchAxe</h1>
             <div class="logo-sub">SWARM THERMOSTAT CONTROL</div>
             <p class="tagline">
                 Open-source touchscreen dashboard for BitAxe miners.<br>
