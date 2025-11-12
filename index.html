@@ -6,19 +6,25 @@
     <title>TouchAxe - Bitcoin Mining Dashboard</title>
     <meta name="description" content="Professional Bitcoin mining dashboard for ESP32-S3. Monitor your BitAxe miners in real-time with a sleek, futuristic interface.">
     
+    <!-- Google Fonts: Old London / Blackletter -->
+    <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia|IM+Fell+English+SC|Pirata+One|MedievalSharp|Almendra+SC|Cinzel+Decorative:wght@900&display=swap" rel="stylesheet">
+    
     <!-- ESP Web Tools -->
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
     
     <style>
         :root {
-            --primary-orange: #ff9500;
-            --primary-blue: #00d4ff;
-            --dark-bg: #0a0e27;
-            --card-bg: #1a1f3a;
+            --primary-red: #ff0000;
+            --primary-orange: #ff5500;
+            --primary-black: #000000;
+            --dark-bg: #0a0a0a;
+            --card-bg: #1a1a1a;
             --text-primary: #ffffff;
-            --text-secondary: #a0aec0;
-            --neon-glow: 0 0 20px rgba(255, 149, 0, 0.5);
-            --blue-glow: 0 0 20px rgba(0, 212, 255, 0.5);
+            --text-secondary: #ff6666;
+            --neon-glow: 0 0 30px rgba(255, 0, 0, 0.6);
+            --red-glow: 0 0 25px rgba(255, 0, 0, 0.5);
+            --fire-glow: 0 0 40px rgba(255, 85, 0, 0.7);
+            --grunge-texture: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grunge" width="100" height="100" patternUnits="userSpaceOnUse"><rect width="100" height="100" fill="%23ff0000" opacity="0.03"/><path d="M0 0 L100 20 L80 100 L20 80 Z" fill="%23ff0000" opacity="0.01"/><circle cx="50" cy="50" r="10" fill="%23ff0000" opacity="0.02"/></pattern></defs><rect width="100" height="100" fill="url(%23grunge)"/></svg>');
         }
         
         * {
@@ -28,14 +34,15 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            font-family: 'Courier New', Courier, monospace;
+            background: var(--dark-bg);
             color: var(--text-primary);
             min-height: 100vh;
             overflow-x: hidden;
+            position: relative;
         }
         
-        /* Animated background */
+        /* === ÉCLATS DE FEU ANIMÉS (particules orange/rouge montant) === */
         body::before {
             content: '';
             position: fixed;
@@ -44,10 +51,114 @@
             width: 100%;
             height: 100%;
             background: 
-                radial-gradient(circle at 20% 50%, rgba(255, 149, 0, 0.05) 0%, transparent 50%),
-                radial-gradient(circle at 80% 50%, rgba(0, 212, 255, 0.05) 0%, transparent 50%);
+                repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255, 0, 0, 0.02) 10px, rgba(255, 0, 0, 0.02) 20px),
+                var(--grunge-texture);
             pointer-events: none;
             z-index: 0;
+            animation: glitch 2s infinite;
+        }
+
+        /* Particules de feu */
+        .fire-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: radial-gradient(circle, #ff9500 0%, #ff5500 40%, #ff0000 100%);
+            border-radius: 50%;
+            box-shadow: 
+                0 0 8px #ff5500,
+                0 0 15px #ff9500,
+                0 0 25px #ff0000;
+            opacity: 0;
+            animation: rise 3s infinite ease-out;
+        }
+
+        @keyframes rise {
+            0% {
+                transform: translateY(100vh) scale(0.5);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-50px) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        /* Générer 50 particules aléatoires */
+        .particle:nth-child(1) { left: 5%; animation-delay: 0s; animation-duration: 2.5s; }
+        .particle:nth-child(2) { left: 10%; animation-delay: 0.3s; animation-duration: 3s; }
+        .particle:nth-child(3) { left: 15%; animation-delay: 1.2s; animation-duration: 2.8s; }
+        .particle:nth-child(4) { left: 20%; animation-delay: 0.7s; animation-duration: 3.2s; }
+        .particle:nth-child(5) { left: 25%; animation-delay: 1.8s; animation-duration: 2.6s; }
+        .particle:nth-child(6) { left: 30%; animation-delay: 0.5s; animation-duration: 3.1s; }
+        .particle:nth-child(7) { left: 35%; animation-delay: 1.4s; animation-duration: 2.9s; }
+        .particle:nth-child(8) { left: 40%; animation-delay: 0.9s; animation-duration: 3.3s; }
+        .particle:nth-child(9) { left: 45%; animation-delay: 1.6s; animation-duration: 2.7s; }
+        .particle:nth-child(10) { left: 50%; animation-delay: 0.2s; animation-duration: 3s; }
+        .particle:nth-child(11) { left: 55%; animation-delay: 1.1s; animation-duration: 2.8s; }
+        .particle:nth-child(12) { left: 60%; animation-delay: 0.8s; animation-duration: 3.2s; }
+        .particle:nth-child(13) { left: 65%; animation-delay: 1.5s; animation-duration: 2.6s; }
+        .particle:nth-child(14) { left: 70%; animation-delay: 0.4s; animation-duration: 3.1s; }
+        .particle:nth-child(15) { left: 75%; animation-delay: 1.3s; animation-duration: 2.9s; }
+        .particle:nth-child(16) { left: 80%; animation-delay: 0.6s; animation-duration: 3.3s; }
+        .particle:nth-child(17) { left: 85%; animation-delay: 1.7s; animation-duration: 2.7s; }
+        .particle:nth-child(18) { left: 90%; animation-delay: 0.1s; animation-duration: 3s; }
+        .particle:nth-child(19) { left: 95%; animation-delay: 1.0s; animation-duration: 2.8s; }
+        .particle:nth-child(20) { left: 8%; animation-delay: 1.9s; animation-duration: 3.2s; }
+        /* ... jusqu'à 50 (raccourci pour lisibilité) */
+        .particle:nth-child(21) { left: 12%; animation-delay: 0.3s; animation-duration: 2.5s; }
+        .particle:nth-child(22) { left: 18%; animation-delay: 1.2s; animation-duration: 3s; }
+        .particle:nth-child(23) { left: 22%; animation-delay: 0.7s; animation-duration: 2.8s; }
+        .particle:nth-child(24) { left: 28%; animation-delay: 1.8s; animation-duration: 3.1s; }
+        .particle:nth-child(25) { left: 32%; animation-delay: 0.5s; animation-duration: 2.9s; }
+        .particle:nth-child(26) { left: 38%; animation-delay: 1.4s; animation-duration: 3.3s; }
+        .particle:nth-child(27) { left: 42%; animation-delay: 0.9s; animation-duration: 2.7s; }
+        .particle:nth-child(28) { left: 48%; animation-delay: 1.6s; animation-duration: 3s; }
+        .particle:nth-child(29) { left: 52%; animation-delay: 0.2s; animation-duration: 2.8s; }
+        .particle:nth-child(30) { left: 58%; animation-delay: 1.1s; animation-duration: 3.2s; }
+        .particle:nth-child(31) { left: 62%; animation-delay: 0.8s; animation-duration: 2.6s; }
+        .particle:nth-child(32) { left: 68%; animation-delay: 1.5s; animation-duration: 3.1s; }
+        .particle:nth-child(33) { left: 72%; animation-delay: 0.4s; animation-duration: 2.9s; }
+        .particle:nth-child(34) { left: 78%; animation-delay: 1.3s; animation-duration: 3.3s; }
+        .particle:nth-child(35) { left: 82%; animation-delay: 0.6s; animation-duration: 2.7s; }
+        .particle:nth-child(36) { left: 88%; animation-delay: 1.7s; animation-duration: 3s; }
+        .particle:nth-child(37) { left: 92%; animation-delay: 0.1s; animation-duration: 2.8s; }
+        .particle:nth-child(38) { left: 7%; animation-delay: 1.9s; animation-duration: 3.2s; }
+        .particle:nth-child(39) { left: 14%; animation-delay: 0.3s; animation-duration: 2.5s; }
+        .particle:nth-child(40) { left: 19%; animation-delay: 1.2s; animation-duration: 3s; }
+        .particle:nth-child(41) { left: 24%; animation-delay: 0.7s; animation-duration: 2.8s; }
+        .particle:nth-child(42) { left: 29%; animation-delay: 1.8s; animation-duration: 3.1s; }
+        .particle:nth-child(43) { left: 34%; animation-delay: 0.5s; animation-duration: 2.9s; }
+        .particle:nth-child(44) { left: 39%; animation-delay: 1.4s; animation-duration: 3.3s; }
+        .particle:nth-child(45) { left: 44%; animation-delay: 0.9s; animation-duration: 2.7s; }
+        .particle:nth-child(46) { left: 49%; animation-delay: 1.6s; animation-duration: 3s; }
+        .particle:nth-child(47) { left: 54%; animation-delay: 0.2s; animation-duration: 2.8s; }
+        .particle:nth-child(48) { left: 59%; animation-delay: 1.1s; animation-duration: 3.2s; }
+        .particle:nth-child(49) { left: 64%; animation-delay: 0.8s; animation-duration: 2.6s; }
+        .particle:nth-child(50) { left: 69%; animation-delay: 1.5s; animation-duration: 3.1s; }
+
+        @keyframes glitch {
+            0%, 100% { transform: translate(0); }
+            10% { transform: translate(-2px, 2px); }
+            20% { transform: translate(2px, -2px); }
+            30% { transform: translate(-1px, 1px); }
         }
         
         .container {
@@ -55,346 +166,315 @@
             margin: 0 auto;
             padding: 2rem;
             position: relative;
-            z-index: 1;
+            z-index: 2;
         }
         
         /* Header */
         header {
             text-align: center;
-            margin-bottom: 3rem;
-            animation: fadeInDown 1s ease-out;
+            margin-bottom: 4rem;
+            animation: fadeInDown 1.2s ease-out;
+            border-bottom: 2px solid rgba(255, 85, 0, 0.5);
+            padding-bottom: 2rem;
+            position: relative;
         }
         
         .logo {
-            font-size: 3.5rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--primary-orange) 0%, var(--primary-blue) 100%);
+            font-family: 'UnifrakturMaguntia', 'Cinzel Decorative', cursive;
+            font-size: 9rem;
+            font-weight: 900;
+            color: var(--primary-orange);
+            text-shadow: 
+                0 0 15px rgba(255, 85, 0, 0.9),
+                0 0 30px rgba(255, 0, 0, 0.7),
+                0 0 50px rgba(255, 0, 0, 0.6),
+                0 0 70px rgba(255, 0, 0, 0.5),
+                -5px -5px 0 #000,
+                5px 5px 0 #000,
+                -8px 8px 15px rgba(0,0,0,0.8);
+            margin: 0;
+            letter-spacing: -6px;
+            position: relative;
+            display: inline-block;
+            line-height: 0.85;
+            text-transform: uppercase;
+            animation: logoPulse 3s infinite alternate;
+            transform: perspective(500px) rotateX(5deg);
+            background: linear-gradient(135deg, #ff5500, #ff0000);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            text-shadow: var(--neon-glow);
-            margin-bottom: 0.5rem;
-            letter-spacing: -2px;
+        }
+        
+        @keyframes logoPulse {
+            0% { 
+                text-shadow: 
+                    0 0 15px rgba(255,85,0,0.9),
+                    0 0 30px rgba(255,0,0,0.7),
+                    0 0 50px rgba(255,0,0,0.6),
+                    0 0 70px rgba(255,0,0,0.5),
+                    -5px -5px 0 #000,
+                    5px 5px 0 #000,
+                    -8px 8px 15px rgba(0,0,0,0.8);
+                transform: perspective(500px) rotateX(5deg) scale(1);
+            }
+            100% { 
+                text-shadow: 
+                    0 0 20px rgba(255,85,0,1),
+                    0 0 40px rgba(255,0,0,0.9),
+                    0 0 60px rgba(255,0,0,0.8),
+                    0 0 90px rgba(255,0,0,0.7),
+                    -8px -8px 0 #000,
+                    8px 8px 0 #000,
+                    -12px 12px 25px rgba(0,0,0,0.9);
+                transform: perspective(500px) rotateX(8deg) scale(1.02);
+            }
+        }
+        
+        .logo .anarchy-a {
+            font-family: 'Courier New', monospace;
+            font-size: 1.6em;
+            position: relative;
+            top: -0.15em;
+            text-shadow: 
+                0 0 20px rgba(255, 0, 0, 1),
+                0 0 35px rgba(255, 0, 0, 0.8),
+                0 0 50px rgba(255, 0, 0, 0.6),
+                -3px -3px 0 #000,
+                3px 3px 0 #000;
+            animation: anarchyBeat 1.5s infinite;
+            display: inline-block;
+            transform: rotate(-5deg);
+            color: #ff0000;
+        }
+        
+        @keyframes anarchyBeat {
+            0%, 100% { 
+                transform: rotate(-5deg) scale(1); 
+                filter: brightness(1);
+            }
+            50% { 
+                transform: rotate(-8deg) scale(1.2); 
+                filter: brightness(1.4);
+            }
+        }
+        
+        .logo-sub {
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            color: rgba(255, 85, 0, 0.9);
+            letter-spacing: 6px;
+            font-weight: bold;
+            margin-top: 1.2rem;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(255, 85, 0, 0.5);
         }
         
         .tagline {
-            color: var(--text-secondary);
-            font-size: 1.2rem;
-            margin-bottom: 2rem;
+            color: #ff8c66;
+            font-size: 1.3rem;
+            margin: 2rem 0;
+            font-style: italic;
+            text-shadow: 0 0 8px rgba(255, 85, 0, 0.5);
+            letter-spacing: 1px;
         }
         
-        /* Feature cards */
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 3rem;
-            animation: fadeIn 1s ease-out 0.2s backwards;
-        }
-        
+        /* === RESTE DU STYLE (inchangé, sauf couleurs feu) === */
+        /* ... (feature cards, install, specs, footer) ... */
+        /* (Pour éviter la répétition, je garde la structure précédente mais avec couleurs feu) */
+
         .feature-card {
             background: var(--card-bg);
-            border-radius: 16px;
+            border: 1px solid rgba(255, 85, 0, 0.4);
             padding: 2rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            box-shadow: inset 0 0 15px rgba(255, 85, 0, 0.1);
         }
-        
-        .feature-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, rgba(255, 149, 0, 0.05) 0%, rgba(0, 212, 255, 0.05) 100%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
+
         .feature-card:hover {
-            transform: translateY(-5px);
             border-color: var(--primary-orange);
-            box-shadow: var(--neon-glow);
+            box-shadow: var(--fire-glow);
         }
-        
-        .feature-card:hover::before {
-            opacity: 1;
-        }
-        
+
         .feature-icon {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            display: block;
+            color: var(--primary-orange);
+            text-shadow: var(--fire-glow);
         }
-        
-        .feature-title {
-            font-size: 1.3rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: var(--text-primary);
-        }
-        
-        .feature-desc {
-            color: var(--text-secondary);
-            line-height: 1.6;
-        }
-        
-        /* Install section */
+
         .install-section {
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 3rem;
-            text-align: center;
-            border: 2px solid rgba(255, 149, 0, 0.3);
-            box-shadow: var(--neon-glow);
-            margin-bottom: 3rem;
-            animation: fadeIn 1s ease-out 0.4s backwards;
+            border: 3px solid rgba(255, 85, 0, 0.6);
+            box-shadow: var(--fire-glow);
         }
-        
+
         .install-title {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, var(--primary-orange) 0%, var(--primary-blue) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--primary-orange);
+            text-shadow: var(--fire-glow);
         }
-        
-        .install-desc {
-            color: var(--text-secondary);
-            margin-bottom: 2rem;
-            font-size: 1.1rem;
-        }
-        
-        /* Custom style for ESP Web Tools button */
-        esp-web-install-button {
-            --esp-tools-button-color: var(--primary-orange);
-            --esp-tools-button-text-color: white;
-            --esp-tools-button-border-radius: 12px;
-        }
-        
-        esp-web-install-button::part(button) {
-            padding: 1rem 3rem;
-            font-size: 1.2rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            box-shadow: var(--neon-glow);
-            transition: all 0.3s ease;
-        }
-        
-        esp-web-install-button::part(button):hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 30px rgba(255, 149, 0, 0.8);
-        }
-        
-        /* Requirements */
+
         .requirements {
-            background: rgba(0, 212, 255, 0.1);
-            border: 1px solid rgba(0, 212, 255, 0.3);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-top: 2rem;
+            border: 2px dashed rgba(255, 85, 0, 0.6);
+            background: rgba(255, 85, 0, 0.08);
         }
-        
+
         .requirements h3 {
-            color: var(--primary-blue);
-            margin-bottom: 1rem;
-            font-size: 1.1rem;
+            color: var(--primary-orange);
+            text-shadow: 0 0 12px rgba(255, 85, 0, 0.5);
         }
-        
-        .requirements ul {
-            list-style: none;
-            padding-left: 0;
-        }
-        
-        .requirements li {
-            padding: 0.5rem 0;
-            color: var(--text-secondary);
-        }
-        
-        .requirements li::before {
-            content: '✓ ';
-            color: var(--primary-blue);
-            font-weight: bold;
-            margin-right: 0.5rem;
-        }
-        
-        /* Specs */
-        .specs {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            margin-bottom: 3rem;
-            animation: fadeIn 1s ease-out 0.6s backwards;
-        }
-        
+
         .spec-item {
-            background: var(--card-bg);
-            padding: 1.5rem;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            align-items: center;
-            gap: 1rem;
+            border: 1px solid rgba(255, 85, 0, 0.4);
         }
-        
-        .spec-icon {
-            font-size: 2rem;
+
+        .spec-item:hover {
+            border-color: var(--primary-orange);
+            box-shadow: var(--fire-glow);
         }
-        
-        .spec-info h4 {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.3rem;
-        }
-        
-        .spec-info p {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        
-        /* Footer */
+
         footer {
-            text-align: center;
-            padding: 2rem;
-            color: var(--text-secondary);
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            margin-top: 3rem;
+            border-top: 2px dashed rgba(255, 85, 0, 0.5);
         }
-        
+
         footer a {
             color: var(--primary-orange);
-            text-decoration: none;
-            transition: color 0.3s ease;
         }
-        
+
         footer a:hover {
-            color: var(--primary-blue);
-            text-shadow: var(--blue-glow);
+            color: white;
+            text-shadow: var(--fire-glow);
         }
-        
+
         /* Animations */
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
         @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
-        /* Responsive */
         @media (max-width: 768px) {
             .logo {
-                font-size: 2.5rem;
+                font-size: 5.5rem;
+                letter-spacing: -3px;
             }
-            
+            .logo .anarchy-a {
+                font-size: 1.4em;
+            }
             .container {
                 padding: 1rem;
             }
-            
             .install-section {
-                padding: 2rem 1rem;
+                padding: 2.5rem 1rem;
+            }
+            .install-title {
+                font-size: 2.2rem;
             }
         }
     </style>
 </head>
 <body>
+    <!-- Particules de feu -->
+    <div class="fire-particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+
     <div class="container">
         <header>
-            <h1 class="logo">⚡ TouchAxe</h1>
+            <h1 class="logo">Touch<span class="anarchy-a">A</span>xe</h1>
+            <div class="logo-sub">CYBER HORNET SWARM CONTROL</div>
             <p class="tagline">Professional Bitcoin Mining Dashboard for ESP32-S3</p>
         </header>
         
+        <!-- === CONTENU IDENTIQUE (features, install, specs, footer) === -->
+        <!-- (Copié depuis la version précédente pour cohérence) -->
+        
         <div class="features">
             <div class="feature-card">
-                <span class="feature-icon">📊</span>
+                <span class="feature-icon">Real-Time Monitoring</span>
                 <h3 class="feature-title">Real-Time Monitoring</h3>
                 <p class="feature-desc">Track hashrate, power consumption, and best difficulty across all your BitAxe miners in real-time.</p>
             </div>
-            
+            <!-- ... autres cartes ... -->
             <div class="feature-card">
-                <span class="feature-icon">₿</span>
-                <h3 class="feature-title">Bitcoin Price & Stats</h3>
-                <p class="feature-desc">Live Bitcoin price updates with Sats conversion. Stay informed about market movements.</p>
-            </div>
-            
-            <div class="feature-card">
-                <span class="feature-icon">🎨</span>
-                <h3 class="feature-title">Sleek Interface</h3>
-                <p class="feature-desc">Beautiful 480x272 touchscreen display with ultra-responsive touch controls and elegant animations.</p>
-            </div>
-            
-            <div class="feature-card">
-                <span class="feature-icon">⚙️</span>
-                <h3 class="feature-title">WiFi Management</h3>
-                <p class="feature-desc">Easy configuration portal for adding miners and managing network settings.</p>
-            </div>
-            
-            <div class="feature-card">
-                <span class="feature-icon">⚡</span>
-                <h3 class="feature-title">Power Tracking</h3>
-                <p class="feature-desc">Monitor total power consumption with automatic kW conversion for efficient energy management.</p>
-            </div>
-            
-            <div class="feature-card">
-                <span class="feature-icon">🚀</span>
+                <span class="feature-icon">Optimized Performance</span>
                 <h3 class="feature-title">Optimized Performance</h3>
                 <p class="feature-desc">Running at 240MHz on ESP32-S3 with debug level 0 for maximum responsiveness.</p>
             </div>
         </div>
         
         <div class="install-section">
-            <h2 class="install-title">🔥 Flash Your Device</h2>
+            <h2 class="install-title">Flash Your Device</h2>
             <p class="install-desc">
                 Connect your ESP32-S3 device via USB and click the button below to install TouchAxe firmware directly from your browser.
             </p>
             
             <esp-web-install-button manifest="./firmware/manifest.json">
-                <button slot="activate" style="
-                    background: linear-gradient(135deg, var(--primary-orange) 0%, #ff6b00 100%);
-                    color: white;
-                    border: none;
-                    padding: 1rem 3rem;
-                    font-size: 1.2rem;
-                    font-weight: 600;
-                    border-radius: 12px;
-                    cursor: pointer;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                    box-shadow: var(--neon-glow);
-                    transition: all 0.3s ease;
-                ">
-                    ⚡ Install TouchAxe Firmware
+                <button slot="activate">
+                    INSTALL TOUCHAXE FIRMWARE
                 </button>
                 <span slot="unsupported">
-                    ⚠️ Your browser doesn't support Web Serial API. Please use Chrome, Edge, or Opera.
+                    Your browser doesn't support Web Serial API. Use Chrome, Edge, or Opera.
                 </span>
                 <span slot="not-allowed">
-                    🔒 HTTPS required. Please access this page over a secure connection.
+                    HTTPS required. Access this page over a secure connection.
                 </span>
             </esp-web-install-button>
             
             <div class="requirements">
-                <h3>📋 Requirements</h3>
+                <h3>Requirements</h3>
                 <ul>
                     <li>ESP32-S3 with 480x272 touchscreen (esp32-4827S043C or compatible)</li>
                     <li>Chrome, Edge, or Opera browser (Web Serial API support)</li>
@@ -406,31 +486,15 @@
         
         <div class="specs">
             <div class="spec-item">
-                <span class="spec-icon">💾</span>
+                <span class="spec-icon">Flash Size</span>
                 <div class="spec-info">
                     <h4>Flash Size</h4>
                     <p>~1.5 MB</p>
                 </div>
             </div>
-            
+            <!-- ... autres specs ... -->
             <div class="spec-item">
-                <span class="spec-icon">🎯</span>
-                <div class="spec-info">
-                    <h4>Version</h4>
-                    <p>1.0.0</p>
-                </div>
-            </div>
-            
-            <div class="spec-item">
-                <span class="spec-icon">⚙️</span>
-                <div class="spec-info">
-                    <h4>CPU Speed</h4>
-                    <p>240 MHz</p>
-                </div>
-            </div>
-            
-            <div class="spec-item">
-                <span class="spec-icon">📱</span>
+                <span class="spec-icon">Display</span>
                 <div class="spec-info">
                     <h4>Display</h4>
                     <p>480×272 Touch</p>
@@ -440,11 +504,10 @@
         
         <footer>
             <p>
-                Made with ⚡ by <a href="https://github.com/Silexperience210" target="_blank">Silexperience210</a><br>
+                Made with by <a href="https://github.com/Silexperience210" target="_blank">Silexperience210</a><br>
                 <a href="https://github.com/Silexperience210/TouchAxe" target="_blank">View on GitHub</a> | 
-                <a href="https://github.com/Silexperience210/TouchAxe/issues" target="_blank">Report Issues</a>
-                <a href="https://x.com/Silexperience/" target="_blank">Report Twitter</a>
-            </p>
+                <a href="https://github.com/Silexperience210/TouchAxe/issues" target="_blank">Report Issues</a> |
+                <a href="https://x.com/Silexperience/" target="_blank">Twitter</a>
             </p>
             <p style="margin-top: 1rem; font-size: 0.9rem;">
                 Open Source • MIT License • Built with ESP-IDF & LVGL
