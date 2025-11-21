@@ -63,6 +63,100 @@ bool BitaxeAPI::testConnection() {
     return (httpCode == HTTP_CODE_OK);
 }
 
+// Control actions
+bool BitaxeAPI::restart() {
+    if (baseUrl.length() == 0) return false;
+    
+    http.begin(baseUrl + "/api/system/restart");
+    http.setTimeout(5000);
+    
+    int httpCode = http.POST("");
+    http.end();
+    
+    Serial.printf("[BitaxeAPI] Restart command: HTTP %d\n", httpCode);
+    return (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_NO_CONTENT);
+}
+
+bool BitaxeAPI::reboot() {
+    if (baseUrl.length() == 0) return false;
+    
+    http.begin(baseUrl + "/api/system/reboot");
+    http.setTimeout(5000);
+    
+    int httpCode = http.POST("");
+    http.end();
+    
+    Serial.printf("[BitaxeAPI] Reboot command: HTTP %d\n", httpCode);
+    return (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_NO_CONTENT);
+}
+
+bool BitaxeAPI::stopMining() {
+    if (baseUrl.length() == 0) return false;
+    
+    http.begin(baseUrl + "/api/mining/stop");
+    http.setTimeout(3000);
+    
+    int httpCode = http.POST("");
+    http.end();
+    
+    Serial.printf("[BitaxeAPI] Stop mining command: HTTP %d\n", httpCode);
+    return (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_NO_CONTENT);
+}
+
+bool BitaxeAPI::startMining() {
+    if (baseUrl.length() == 0) return false;
+    
+    http.begin(baseUrl + "/api/mining/start");
+    http.setTimeout(3000);
+    
+    int httpCode = http.POST("");
+    http.end();
+    
+    Serial.printf("[BitaxeAPI] Start mining command: HTTP %d\n", httpCode);
+    return (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_NO_CONTENT);
+}
+
+// Configuration
+bool BitaxeAPI::getConfig(JsonDocument& config) {
+    return makeRequest("/api/system/config", config);
+}
+
+bool BitaxeAPI::setConfig(JsonDocument& config) {
+    if (baseUrl.length() == 0) return false;
+    
+    String url = baseUrl + "/api/system/config";
+    String jsonString;
+    serializeJson(config, jsonString);
+    
+    http.begin(url);
+    http.setTimeout(5000);
+    http.addHeader("Content-Type", "application/json");
+    
+    int httpCode = http.POST(jsonString);
+    http.end();
+    
+    Serial.printf("[BitaxeAPI] Set config: HTTP %d\n", httpCode);
+    return (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_NO_CONTENT);
+}
+
+// Firmware update
+bool BitaxeAPI::updateFirmware(String url) {
+    if (baseUrl.length() == 0) return false;
+    
+    String updateUrl = baseUrl + "/api/system/update";
+    String payload = "{\"url\":\"" + url + "\"}";
+    
+    http.begin(updateUrl);
+    http.setTimeout(10000);  // Longer timeout for firmware update
+    http.addHeader("Content-Type", "application/json");
+    
+    int httpCode = http.POST(payload);
+    http.end();
+    
+    Serial.printf("[BitaxeAPI] Firmware update: HTTP %d\n", httpCode);
+    return (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_ACCEPTED);
+}
+
 bool BitaxeAPI::getStats(BitaxeStats& stats) {
     stats.valid = false;
     

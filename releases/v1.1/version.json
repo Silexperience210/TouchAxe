@@ -1,0 +1,29 @@
+{
+  "version": "1.1.0",
+  "name": "TouchAxe V1.1",
+  "description": "Dashboard Bitcoin Mining avec boutons Prev/Next et interface améliorée",
+  "build_date": "2025-11-21",
+  "platform": "ESP32-S3",
+  "resolution": "480x272",
+  "features": [
+    "Boutons Prev/Next pour navigation mineurs",
+    "Debounce des boutons (200ms)",
+    "Centrage du container avec bordures visibles",
+    "Icônes météo Font Awesome",
+    "Correction affichage power consumption"
+  ],
+  "files": {
+    "firmware.bin": {
+      "address": "0x10000",
+      "size": 1475392
+    },
+    "bootloader.bin": {
+      "address": "0x0000",
+      "size": 15104
+    },
+    "partitions.bin": {
+      "address": "0x8000",
+      "size": 3072
+    }
+  }
+}

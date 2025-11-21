@@ -9,8 +9,8 @@
 #include "ui.h"
 #include "time_manager.h"
 #include "wifi_manager.h"
+#include "weather_manager.h"
 #include "bitcoin_api.h"
-#include "config.h"
 
 static esp_lcd_panel_handle_t panel_handle = NULL;
 static lv_display_t *disp = NULL;
@@ -60,8 +60,8 @@ static void touchpad_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
     static lv_indev_data_t last_data;
     uint32_t now = millis();
     
-    // Limiter la lecture du GT911 à 50Hz (20ms) pour un suivi plus fluide du mouvement
-    if (now - last_read_time < 20) {
+    // Limiter la lecture du GT911 à 200Hz (5ms) pour un suivi ultra-fluide du mouvement
+    if (now - last_read_time < 5) {
         // Retourner le dernier état lu
         *data = last_data;
         return;
@@ -276,10 +276,19 @@ void setup() {
     Serial.println("Initializing BitcoinAPI...");
     BitcoinAPI::getInstance().begin();
     
+    // Initialiser le WeatherManager
+    Serial.println("Initializing WeatherManager...");
+    WeatherManager::getInstance()->init();
+    
     Serial.println("\n=== SETUP COMPLETE ===\n");
 }
 
 void loop() {
+    // *** MONITORING: Track CPU usage and RAM ***
+    static uint32_t loop_count = 0;
+    static uint32_t last_monitor_time = 0;
+    loop_count++;
+    
     // Check for serial commands
     if (Serial.available()) {
         String cmd = Serial.readStringUntil('\n');
@@ -362,33 +371,72 @@ void loop() {
             bitcoin_first_fetch = false;
             last_bitcoin_fetch = millis();
             BitcoinAPI::getInstance().fetchPrice();
+            BitcoinAPI::getInstance().fetchBlockData();
             UI::getInstance().updateBitcoinPrice();
         }
         // Then fetch every 30 seconds
         else if (millis() - last_bitcoin_fetch > 30000) {
             last_bitcoin_fetch = millis();
             BitcoinAPI::getInstance().fetchPrice();
+            BitcoinAPI::getInstance().fetchBlockData();
             UI::getInstance().updateBitcoinPrice();
         }
     }
     
-    // *** OPTIMIZED: Call lv_timer_handler() every 10ms instead of every millisecond ***
+    // Fetch weather data every 30 minutes (1800000ms) - Open-Meteo free tier
+    static uint32_t last_weather_fetch = 0;
+    static bool weather_first_fetch = true;
+    if (!WifiManager::getInstance()->isAPMode()) {
+        // First fetch immediately after WiFi connection
+        if (weather_first_fetch && WifiManager::getInstance()->isConnected()) {
+            weather_first_fetch = false;
+            last_weather_fetch = millis();
+            WeatherManager::getInstance()->updateWeather();
+            UI::getInstance().updateWeatherDisplay();
+        }
+        // Then fetch every 30 minutes
+        else if (millis() - last_weather_fetch > 1800000) {
+            last_weather_fetch = millis();
+            WeatherManager::getInstance()->updateWeather();
+            UI::getInstance().updateWeatherDisplay();
+        }
+    }
+    
+    // *** OPTIMIZED: Call lv_timer_handler() every 2ms instead of every millisecond ***
     // LVGL recommends 5-10ms intervals for smooth operation with much better CPU efficiency
     static uint32_t last_lvgl_call = 0;
     uint32_t now = millis();
-    if (now - last_lvgl_call >= 10) {
+    if (now - last_lvgl_call >= 2) {
         last_lvgl_call = now;
         lv_timer_handler();
     }
     
-    // Touch input lu à CHAQUE loop pour maximum de réactivité (<1ms latence)
-    if (indev_touchpad != nullptr) {
-        lv_indev_read(indev_touchpad);
+    // *** OPTIMIZED: Touch input reading - limit to 200Hz (5ms) for better performance ***
+    // Reading every loop was causing excessive CPU usage and lag
+    static uint32_t last_touch_read = 0;
+    if (now - last_touch_read >= 5) {  // 200Hz touch reading
+        last_touch_read = now;
+        if (indev_touchpad != nullptr) {
+            lv_indev_read(indev_touchpad);
+        }
     }
     
-    // Animation update appelée à chaque loop pour fluidité
-    UI::getInstance().updateFallingSquares();
+    // *** OPTIMIZED: Animation update - only when on clock screen and throttled ***
+    // Removed duplicate call - now only called from clock update section above
+    // UI::getInstance().updateFallingSquares(); // REMOVED - was called twice!
     
-    // NO DELAY - ESP32-S3 @ 240MHz handles this easily
+    // *** OPTIMIZED: Small delay to prevent CPU overload while maintaining responsiveness ***
+    // ESP32-S3 @ 240MHz can handle this, but prevents excessive power consumption
+    delayMicroseconds(25);  // 0.025ms delay = ~40kHz loop rate (ultra responsive)
+    
+    // *** MONITORING: Print CPU and RAM usage every second ***
+    if (millis() - last_monitor_time >= 1000) {
+        last_monitor_time = millis();
+        Serial.printf("[MONITOR] Loops/sec: %lu, Free RAM: %lu bytes (%.1f%% used)\n", 
+                     loop_count, 
+                     (unsigned long)ESP.getFreeHeap(), 
+                     100.0f - (ESP.getFreeHeap() / 327680.0f * 100.0f));
+        loop_count = 0;
+    }
 }
 

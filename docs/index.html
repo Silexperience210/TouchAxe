@@ -290,24 +290,52 @@
             font-size: 0.9rem;
         }
 
-        /* Footer */
-        .footer {
+        /* Version Selector */
+        .version-selector {
+            background: rgba(255, 0, 0, 0.05);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .version-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .version-btn {
+            background: rgba(100, 100, 100, 0.3);
+            border: 2px solid transparent;
+            border-radius: 8px;
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: all 0.3s;
             text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 0, 0, 0.2);
-            color: #666;
-            font-size: 0.9rem;
+            flex: 1;
         }
 
-        .footer a {
+        .version-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 0, 0, 0.3);
+        }
+
+        .version-btn.selected {
+            background: rgba(255, 0, 0, 0.3);
+            border-color: #ff0000;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+        }
+
+        .version-title {
+            font-weight: bold;
             color: #ff4040;
-            text-decoration: none;
-            transition: color 0.3s;
+            margin-bottom: 5px;
         }
 
-        .footer a:hover {
-            color: #ff6060;
+        .version-desc {
+            font-size: 0.9em;
+            color: #ccc;
         }
 
         /* Responsive */
@@ -335,16 +363,31 @@
         <h1>⚡ TOUCHAXE ⚡</h1>
         <div class="subtitle">ESP32 Bitaxe Monitor - Web Flasher</div>
 
+        <!-- Version Selector -->
+        <div class="version-selector">
+            <h3 style="color: #ff4040; margin-bottom: 15px; text-align: center;">🔄 Choisissez votre version</h3>
+            <div class="version-buttons">
+                <button class="version-btn" data-version="v1.0" style="background: rgba(100, 100, 100, 0.3);">
+                    <div class="version-title">V1.0</div>
+                    <div class="version-desc">Version originale</div>
+                </button>
+                <button class="version-btn selected" data-version="v1.1" style="background: rgba(255, 0, 0, 0.3); border: 2px solid #ff0000;">
+                    <div class="version-title">V1.1 ⭐ RECOMMANDÉ</div>
+                    <div class="version-desc">21 nov 2025 - Améliorations</div>
+                </button>
+            </div>
+        </div>
+
         <!-- Firmware Info -->
         <div class="info-box">
             <h3>📦 Firmware Information</h3>
             <div class="info-item">
                 <span class="info-label">Version:</span>
-                <span class="info-value">1.0.0</span>
+                <span class="info-value" id="fw-version">1.1.0</span>
             </div>
             <div class="info-item">
                 <span class="info-label">Build Date:</span>
-                <span class="info-value">2025-01-11</span>
+                <span class="info-value" id="fw-date">2025-11-21</span>
             </div>
             <div class="info-item">
                 <span class="info-label">Target Board:</span>
@@ -352,27 +395,28 @@
             </div>
             <div class="info-item">
                 <span class="info-label">Flash Size:</span>
-                <span class="info-value">1,521,029 bytes (45.5%)</span>
+                <span class="info-value" id="fw-size">1,475,392 bytes (44.1%)</span>
             </div>
         </div>
 
         <!-- Features -->
         <div class="features">
-            <h3>✨ Features</h3>
-            <ul>
+            <h3 id="features-title">✨ Fonctionnalités V1.1</h3>
+            <ul id="features-list">
                 <li>🔗 <strong>Bitaxe API Integration</strong> - Direct monitoring via HTTP API</li>
                 <li>🐝 <strong>Swarm Monitoring</strong> - Track up to 10 CyberHornet/Bitaxe devices</li>
                 <li>💰 Real-time Bitcoin price & Satoshi conversion</li>
-                <li>👆 Touch navigation with pagination</li>
+                <li>👆 <strong>Touch navigation with Prev/Next buttons</strong></li>
                 <li>⏱️ Auto-refresh every 10-30 seconds</li>
                 <li>🌐 NTP time synchronization</li>
                 <li>📡 Web configuration portal</li>
-                <li>🎨 Futuristic UI with animations</li>
+                <li>🎨 <strong>Professional weather icons (Font Awesome)</strong></li>
+                <li>⚡ <strong>Centered container with visible borders</strong></li>
+                <li>🚀 <strong>Debounced buttons (200ms)</strong></li>
             </ul>
-            <p style="margin-top: 12px; padding: 10px; background: rgba(255,100,0,0.15); border-left: 3px solid #ff6400; font-size: 0.9rem; text-align: left;">
-                🔧 <strong>Powered by <a href="https://bitaxe.org" target="_blank" style="color: #ff6400; text-decoration: none; border-bottom: 1px dashed #ff6400;">Bitaxe</a></strong> - 
-                Open-source Bitcoin mining hardware. TouchAxe integrates with Bitaxe API for comprehensive swarm monitoring.
-            </p>
+            <div id="v11-badge" style="margin-top: 12px; padding: 10px; background: rgba(255,100,0,0.15); border-left: 3px solid #ff6400; font-size: 0.9rem; text-align: left;">
+                🆕 <strong>Nouveautés V1.1:</strong> Navigation tactile fiable, icônes météo professionnelles, interface centrée avec bordures visibles, boutons sans rebond.
+            </div>
         </div>
 
         <!-- Roadmap -->
@@ -390,7 +434,7 @@
 
         <!-- Flash Button -->
         <div class="flash-container">
-            <esp-web-install-button manifest="./manifest.json">
+            <esp-web-install-button id="flash-button" manifest="./manifest-v1.1.json">
                 <button slot="activate" style="
                     background: linear-gradient(135deg, #ff0000, #cc0000);
                     border: 2px solid #ff0000;
@@ -406,7 +450,7 @@
                     box-shadow: 0 0 20px rgba(255, 0, 0, 0.5), 0 5px 15px rgba(0, 0, 0, 0.3);
                     font-family: 'Courier New', monospace;
                 ">
-                    ⚡ FLASH FIRMWARE ⚡
+                    ⚡ FLASH FIRMWARE V1.1 ⚡
                 </button>
             </esp-web-install-button>
         </div>
@@ -452,5 +496,103 @@
             </p>
         </div>
     </div>
+
+    <script>
+        // Version management
+        const versions = {
+            'v1.0': {
+                version: '1.0.0',
+                date: '2025-01-11',
+                size: '1,521,029 bytes (45.5%)',
+                manifest: './manifest-v1.0.json',
+                features: [
+                    '🔗 <strong>Bitaxe API Integration</strong> - Direct monitoring via HTTP API',
+                    '🐝 <strong>Swarm Monitoring</strong> - Track up to 10 CyberHornet/Bitaxe devices',
+                    '💰 Real-time Bitcoin price & Satoshi conversion',
+                    '👆 Touch navigation with pagination',
+                    '⏱️ Auto-refresh every 10-30 seconds',
+                    '🌐 NTP time synchronization',
+                    '📡 Web configuration portal',
+                    '🎨 Futuristic UI with animations'
+                ],
+                badge: null
+            },
+            'v1.1': {
+                version: '1.1.0',
+                date: '2025-11-21',
+                size: '1,475,392 bytes (44.1%)',
+                manifest: './manifest-v1.1.json',
+                features: [
+                    '🔗 <strong>Bitaxe API Integration</strong> - Direct monitoring via HTTP API',
+                    '🐝 <strong>Swarm Monitoring</strong> - Track up to 10 CyberHornet/Bitaxe devices',
+                    '💰 Real-time Bitcoin price & Satoshi conversion',
+                    '👆 <strong>Touch navigation with Prev/Next buttons</strong>',
+                    '⏱️ Auto-refresh every 10-30 seconds',
+                    '🌐 NTP time synchronization',
+                    '📡 Web configuration portal',
+                    '🎨 <strong>Professional weather icons (Font Awesome)</strong>',
+                    '⚡ <strong>Centered container with visible borders</strong>',
+                    '🚀 <strong>Debounced buttons (200ms)</strong>'
+                ],
+                badge: '🆕 <strong>Nouveautés V1.1:</strong> Navigation tactile fiable, icônes météo professionnelles, interface centrée avec bordures visibles, boutons sans rebond.'
+            }
+        };
+
+        let currentVersion = 'v1.1';
+
+        // Version selector buttons
+        document.querySelectorAll('.version-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Update button styles
+                document.querySelectorAll('.version-btn').forEach(b => {
+                    b.classList.remove('selected');
+                    b.style.background = 'rgba(100, 100, 100, 0.3)';
+                    b.style.border = '2px solid transparent';
+                });
+                btn.classList.add('selected');
+                btn.style.background = 'rgba(255, 0, 0, 0.3)';
+                btn.style.border = '2px solid #ff0000';
+
+                // Update current version
+                currentVersion = btn.dataset.version;
+                updateVersionDisplay();
+            });
+        });
+
+        function updateVersionDisplay() {
+            const version = versions[currentVersion];
+
+            // Update firmware info
+            document.getElementById('fw-version').textContent = version.version;
+            document.getElementById('fw-date').textContent = version.date;
+            document.getElementById('fw-size').textContent = version.size;
+
+            // Update features
+            document.getElementById('features-title').textContent =
+                currentVersion === 'v1.1' ? '✨ Fonctionnalités V1.1' : '✨ Fonctionnalités V1.0';
+
+            const featuresList = document.getElementById('features-list');
+            featuresList.innerHTML = version.features.map(feature => `<li>${feature}</li>`).join('');
+
+            // Update badge
+            const badgeDiv = document.getElementById('v11-badge');
+            if (version.badge) {
+                badgeDiv.style.display = 'block';
+                badgeDiv.innerHTML = version.badge;
+            } else {
+                badgeDiv.style.display = 'none';
+            }
+
+            // Update flash button
+            const flashButton = document.getElementById('flash-button');
+            flashButton.setAttribute('manifest', version.manifest);
+
+            const button = flashButton.querySelector('button');
+            button.textContent = `⚡ FLASH FIRMWARE ${currentVersion.toUpperCase()} ⚡`;
+        }
+
+        // Initialize
+        updateVersionDisplay();
+    </script>
 </body>
 </html>

@@ -47,4 +47,17 @@ public:
     
     // Test if device is reachable
     bool testConnection();
+    
+    // Control actions
+    bool restart();         // Restart mining software
+    bool reboot();          // Reboot the device
+    bool stopMining();      // Stop mining
+    bool startMining();     // Start mining
+    
+    // Configuration
+    bool getConfig(JsonDocument& config);  // Get current config
+    bool setConfig(JsonDocument& config);  // Update config
+    
+    // Firmware update
+    bool updateFirmware(String url);       // Update firmware from URL
 };
