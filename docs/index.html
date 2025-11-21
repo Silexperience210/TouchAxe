@@ -367,11 +367,11 @@
         <div class="version-selector">
             <h3 style="color: #ff4040; margin-bottom: 15px; text-align: center;">🔄 Choisissez votre version</h3>
             <div class="version-buttons">
-                <button class="version-btn" data-version="v1.0" style="background: rgba(100, 100, 100, 0.3);">
+                <button class="version-btn" data-version="v1.0">
                     <div class="version-title">V1.0</div>
                     <div class="version-desc">Version originale</div>
                 </button>
-                <button class="version-btn selected" data-version="v1.1" style="background: rgba(255, 0, 0, 0.3); border: 2px solid #ff0000;">
+                <button class="version-btn selected" data-version="v1.1">
                     <div class="version-title">V1.1 ⭐ RECOMMANDÉ</div>
                     <div class="version-desc">21 nov 2025 - Améliorations</div>
                 </button>
@@ -546,12 +546,8 @@
                 // Update button styles
                 document.querySelectorAll('.version-btn').forEach(b => {
                     b.classList.remove('selected');
-                    b.style.background = 'rgba(100, 100, 100, 0.3)';
-                    b.style.border = '2px solid transparent';
                 });
                 btn.classList.add('selected');
-                btn.style.background = 'rgba(255, 0, 0, 0.3)';
-                btn.style.border = '2px solid #ff0000';
 
                 // Update current version
                 currentVersion = btn.dataset.version;
@@ -591,8 +587,22 @@
             button.textContent = `⚡ FLASH FIRMWARE ${currentVersion.toUpperCase()} ⚡`;
         }
 
-        // Initialize
-        updateVersionDisplay();
+        // Initialize - apply correct styles for selected button
+        function initializeVersionSelector() {
+            document.querySelectorAll('.version-btn').forEach(btn => {
+                if (btn.classList.contains('selected')) {
+                    currentVersion = btn.dataset.version;
+                }
+            });
+            updateVersionDisplay();
+        }
+
+        // Initialize when DOM is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeVersionSelector);
+        } else {
+            initializeVersionSelector();
+        }
     </script>
 </body>
 </html>
