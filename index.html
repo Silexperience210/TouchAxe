@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>TouchAxe Flasher</title>
+  <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js"></script>
+</head>
+<body style="background: #0a0a0a; color: #ff6600; font-family: monospace; padding: 50px; text-align: center;">
+  <h1 style="color: #ff3300;">⚡ TouchAxe Web Flasher</h1>
+  <select id="version" style="padding: 10px; font-size: 16px; margin: 20px;">
+    <option value="latest">Latest</option>
+  </select>
+  <br>
+  <esp-web-install-button id="btn">
+    <button slot="activate" style="background: #ff3300; color: white; padding: 20px 40px; font-size: 18px; border: none; cursor: pointer;">Flash TouchAxe</button>
+  </esp-web-install-button>
+  <script>
+    const btn = document.querySelector('#btn');
+    const sel = document.querySelector('#version');
+    btn.manifest = './latest/manifest.json';
+    sel.onchange = e => btn.manifest = './' + e.target.value + '/manifest.json';
+  </script>
+</body>
+</html>
