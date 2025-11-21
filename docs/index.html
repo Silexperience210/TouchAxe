@@ -290,13 +290,95 @@
             font-size: 0.9rem;
         }
 
+        /* Version Selection */
+        .version-selection {
+            background: rgba(255, 0, 0, 0.05);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .version-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .version-option {
+            background: rgba(10, 10, 10, 0.8);
+            border: 2px solid rgba(255, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .version-option:hover {
+            border-color: rgba(255, 0, 0, 0.5);
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.2);
+        }
+
+        .version-option.recommended {
+            border-color: #ff0000;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+        }
+
+        .version-option h4 {
+            color: #ff4040;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .version-option p {
+            color: #ccc;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .flash-btn {
+            background: linear-gradient(135deg, #ff0000, #cc0000);
+            border: 2px solid #ff0000;
+            color: white;
+            padding: 12px 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
+            font-family: 'Courier New', monospace;
+            width: 100%;
+        }
+
+        .flash-btn:hover {
+            background: linear-gradient(135deg, #ff3333, #ff0000);
+            box-shadow: 0 0 25px rgba(255, 0, 0, 0.7);
+            transform: translateY(-2px);
+        }
+
+        .badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #ff0000;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
         /* Responsive */
-        @media (max-width: 600px) {
-            h1 {
-                font-size: 1.8rem;
-            }
-            .container {
-                padding: 25px;
+        @media (max-width: 768px) {
+            .version-buttons {
+                grid-template-columns: 1fr;
+                gap: 15px;
             }
         }
     </style>
@@ -356,27 +438,32 @@
             </div>
         </div>
 
-        <!-- Flash Button -->
-        <div class="flash-container">
-            <esp-web-install-button manifest="./manifest.json">
-                <button slot="activate" style="
-                    background: linear-gradient(135deg, #ff0000, #cc0000);
-                    border: 2px solid #ff0000;
-                    color: white;
-                    padding: 15px 40px;
-                    font-size: 1.2rem;
-                    font-weight: bold;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    text-transform: uppercase;
-                    letter-spacing: 2px;
-                    transition: all 0.3s;
-                    box-shadow: 0 0 20px rgba(255, 0, 0, 0.5), 0 5px 15px rgba(0, 0, 0, 0.3);
-                    font-family: 'Courier New', monospace;
-                ">
-                    ⚡ CHOISIR VERSION & FLASHER ⚡
-                </button>
-            </esp-web-install-button>
+        <!-- Version Selection -->
+        <div class="version-selection">
+            <h3 style="color: #ff4040; margin-bottom: 20px; text-align: center;">🔄 Choisissez votre version</h3>
+
+            <div class="version-buttons">
+                <div class="version-option">
+                    <h4>TouchAxe V1.0</h4>
+                    <p>Version originale avec navigation par swipe</p>
+                    <esp-web-install-button manifest="./manifest-v1.0.json">
+                        <button slot="activate" class="flash-btn">
+                            ⚡ FLASHER V1.0 ⚡
+                        </button>
+                    </esp-web-install-button>
+                </div>
+
+                <div class="version-option recommended">
+                    <div class="badge">⭐ RECOMMANDÉ</div>
+                    <h4>TouchAxe V1.1</h4>
+                    <p>Version améliorée avec boutons Prev/Next, icônes météo Font Awesome</p>
+                    <esp-web-install-button manifest="./manifest-v1.1.json">
+                        <button slot="activate" class="flash-btn">
+                            ⚡ FLASHER V1.1 ⚡
+                        </button>
+                    </esp-web-install-button>
+                </div>
+            </div>
         </div>
 
         <!-- Instructions -->
@@ -384,8 +471,8 @@
             <h3>📋 Installation Instructions</h3>
             <ol>
                 <li>Connect your ESP32-S3 board via USB-C</li>
-                <li>Click "CHOOSE VERSION & FLASH" button above</li>
-                <li><strong>Select your preferred version</strong> from the dropdown (V1.1 recommended ⭐)</li>
+                <li><strong>Choose your version</strong> above (V1.1 recommended ⭐)</li>
+                <li>Click the corresponding "FLASHER" button</li>
                 <li>Select your device port from the popup</li>
                 <li>Wait for the installation to complete</li>
                 <li>Board will restart automatically</li>
