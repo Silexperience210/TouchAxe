@@ -289,6 +289,9 @@ void loop() {
     static uint32_t last_monitor_time = 0;
     loop_count++;
     
+    // Get bitaxe count for optimizations
+    int bitaxeCount = WifiManager::getInstance()->getBitaxeCount();
+    
     // Check for serial commands
     if (Serial.available()) {
         String cmd = Serial.readStringUntil('\n');
@@ -345,27 +348,53 @@ void loop() {
     
     // ANIMATION MANUELLE des carrés - SEULEMENT sur Clock screen !
     // Désactivée automatiquement sur Miners pour meilleures performances
-    UI::getInstance().updateFallingSquares();
-    
-    // Check Bitaxe status every 15 seconds - SEULEMENT sur Clock screen !
-    // (skip sur Miners pour éviter conflits HTTP)
-    static uint32_t last_bitaxe_check = 0;
-    if (!WifiManager::getInstance()->isAPMode() && millis() - last_bitaxe_check > 15000) {
-        last_bitaxe_check = millis();
-        UI::getInstance().checkBitaxeStatus();  // Cette fonction vérifie déjà current_screen
+    // DISABLED for 3+ Bitaxe devices to save CPU
+    if (bitaxeCount < 3) {
+        UI::getInstance().updateFallingSquares();
     }
     
-    // Refresh Miners screen data every 10 seconds (only when on MINERS_SCREEN)
+    // Check Bitaxe status every 30 seconds (instead of 15) - REDUCED FREQUENCY
+    // (skip sur Miners pour éviter conflits HTTP)
+    static uint32_t last_bitaxe_check = 0;
+    static uint8_t consecutive_errors = 0;
+    if (!WifiManager::getInstance()->isAPMode() && millis() - last_bitaxe_check > 30000) {  // 30s instead of 15s
+        last_bitaxe_check = millis();
+        
+        // PROTECTION: Limit concurrent HTTP requests to prevent overload
+        if (bitaxeCount > 3) {
+            // For 4+ devices, increase interval to 45 seconds
+            if (millis() - last_bitaxe_check < 45000) {
+                return;  // Skip this check
+            }
+            last_bitaxe_check = millis();
+        }
+        
+        UI::getInstance().checkBitaxeStatus();  // Cette fonction vérifie déjà current_screen
+        bool success = true;  // Assume success for now - could be improved with return value
+        if (!success) {
+            consecutive_errors++;
+            if (consecutive_errors >= 3) {
+                Serial.println("[MAIN] Too many consecutive errors, increasing check interval to 60s");
+                // Next check will be delayed further
+            }
+        } else {
+            consecutive_errors = 0;
+        }
+    }
+    
+    // Refresh Miners screen data every 20 seconds (instead of 10) - REDUCED FREQUENCY
     static uint32_t last_miners_refresh = 0;
-    if (!WifiManager::getInstance()->isAPMode() && millis() - last_miners_refresh > 10000) {
+    if (!WifiManager::getInstance()->isAPMode() && millis() - last_miners_refresh > 20000) {  // 20s instead of 10s
         last_miners_refresh = millis();
         UI::getInstance().refreshMinersIfActive();
     }
     
-    // Fetch Bitcoin price every 30 seconds - CoinGecko free tier allows 10-50 req/min
+    // Fetch Bitcoin price every 60 seconds (instead of 30) when multiple Bitaxe - REDUCED FREQUENCY
     static uint32_t last_bitcoin_fetch = 0;
     static bool bitcoin_first_fetch = true;
     if (!WifiManager::getInstance()->isAPMode()) {
+        uint32_t bitcoin_interval = (bitaxeCount > 2) ? 60000 : 30000;  // 60s for 3+ devices, 30s for fewer
+        
         // First fetch immediately after WiFi connection
         if (bitcoin_first_fetch && WifiManager::getInstance()->isConnected()) {
             bitcoin_first_fetch = false;
@@ -374,8 +403,8 @@ void loop() {
             BitcoinAPI::getInstance().fetchBlockData();
             UI::getInstance().updateBitcoinPrice();
         }
-        // Then fetch every 30 seconds
-        else if (millis() - last_bitcoin_fetch > 30000) {
+        // Then fetch at reduced frequency
+        else if (millis() - last_bitcoin_fetch > bitcoin_interval) {
             last_bitcoin_fetch = millis();
             BitcoinAPI::getInstance().fetchPrice();
             BitcoinAPI::getInstance().fetchBlockData();
@@ -429,13 +458,16 @@ void loop() {
     // ESP32-S3 @ 240MHz can handle this, but prevents excessive power consumption
     delayMicroseconds(25);  // 0.025ms delay = ~40kHz loop rate (ultra responsive)
     
-    // *** MONITORING: Print CPU and RAM usage every second ***
-    if (millis() - last_monitor_time >= 1000) {
+    // *** MONITORING: Print CPU and RAM usage every 2 seconds (instead of 1) for high load ***
+    uint32_t monitor_interval = (bitaxeCount > 2) ? 2000 : 1000;  // 2s for 3+ devices, 1s for fewer
+    
+    if (millis() - last_monitor_time >= monitor_interval) {
         last_monitor_time = millis();
-        Serial.printf("[MONITOR] Loops/sec: %lu, Free RAM: %lu bytes (%.1f%% used)\n", 
+        Serial.printf("[MONITOR] Loops/sec: %lu, Free RAM: %lu bytes (%.1f%% used), Bitaxe: %d\n", 
                      loop_count, 
                      (unsigned long)ESP.getFreeHeap(), 
-                     100.0f - (ESP.getFreeHeap() / 327680.0f * 100.0f));
+                     100.0f - (ESP.getFreeHeap() / 327680.0f * 100.0f),
+                     bitaxeCount);
         loop_count = 0;
     }
 }

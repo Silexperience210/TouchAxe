@@ -21,12 +21,20 @@ bool BitaxeAPI::makeRequest(const char* endpoint, JsonDocument& doc) {
     String url = baseUrl + endpoint;
     
     http.begin(url);
-    http.setTimeout(1000);  // 1 second timeout for better UI responsiveness
+    http.setTimeout(2000);  // REDUCED: 2 seconds timeout (was 1s) for better reliability with multiple devices
     
     int httpCode = http.GET();
     
     if (httpCode == HTTP_CODE_OK) {
         String payload = http.getString();
+        
+        // LIMIT JSON SIZE to prevent memory issues with multiple devices
+        if (payload.length() > 2048) {  // Max 2KB per response
+            Serial.printf("[BitaxeAPI] Response too large: %d bytes, skipping\n", payload.length());
+            http.end();
+            return false;
+        }
+        
         DeserializationError error = deserializeJson(doc, payload);
         
         if (error) {
@@ -35,15 +43,19 @@ bool BitaxeAPI::makeRequest(const char* endpoint, JsonDocument& doc) {
             return false;
         }
         
-        // DEBUG: Print entire JSON response
-        Serial.println("[BitaxeAPI] JSON Response:");
-        serializeJsonPretty(doc, Serial);
-        Serial.println();
+        // DEBUG: Print entire JSON response (only for first device to reduce spam)
+        static bool firstDebug = true;
+        if (firstDebug) {
+            Serial.println("[BitaxeAPI] JSON Response (first device only):");
+            serializeJsonPretty(doc, Serial);
+            Serial.println();
+            firstDebug = false;
+        }
         
         http.end();
         return true;
     } else {
-        Serial.printf("[BitaxeAPI] HTTP error: %d\n", httpCode);
+        Serial.printf("[BitaxeAPI] HTTP error: %d for %s\n", httpCode, url.c_str());
         http.end();
         return false;
     }
