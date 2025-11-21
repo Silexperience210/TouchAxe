@@ -1,11 +1,34 @@
 {
   "name": "TouchAxe - Bitaxe Monitor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "home_assistant_domain": "esphome",
   "new_install_prompt_erase": true,
   "builds": [
     {
       "chipFamily": "ESP32-S3",
+      "version": "1.1.0",
+      "summary": "TouchAxe V1.1 ⭐ RECOMMANDÉ - Interface améliorée",
+      "description": "Version améliorée avec boutons Prev/Next, debounce, icônes météo Font Awesome, centrage du container",
+      "parts": [
+        {
+          "path": "firmware/bootloader.bin",
+          "offset": 0
+        },
+        {
+          "path": "firmware/partitions.bin",
+          "offset": 32768
+        },
+        {
+          "path": "firmware/firmware.bin",
+          "offset": 65536
+        }
+      ]
+    },
+    {
+      "chipFamily": "ESP32-S3",
+      "version": "1.0.0",
+      "summary": "TouchAxe V1.0 - Version originale",
+      "description": "Version originale avec navigation par swipe et interface basique",
       "parts": [
         {
           "path": "firmware/bootloader.bin",
