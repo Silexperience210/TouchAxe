@@ -307,12 +307,57 @@ static void displayMinerInCarousel(int minerIndex) {
     if (getCachedStats(minerIndex, stats)) {
         device->online = true;
 
-        // Déterminer la couleur selon l'état
+        // Obtenir l'historique pour vérifier les alertes
+        StatsManager& statsMgr = StatsManager::getInstance();
+        MinerHistory* history = statsMgr.getMinerHistory(device->ip);
+        
+        // Déterminer la couleur selon l'état avec priorité aux alertes
         lv_color_t status_color = lv_color_hex(0x00FF00); // Vert = OK
-        if (stats.temp > 70.0) {
-            status_color = lv_color_hex(0xFF0000); // Rouge = trop chaud
-        } else if (stats.temp > 60.0) {
-            status_color = lv_color_hex(0xFFAA00); // Orange = chaud
+        lv_color_t border_color = lv_color_hex(0xFF0000); // Bordure rouge par défaut
+        
+        // Vérifier les alertes actives
+        bool hasAlert = false;
+        if (history) {
+            if (history->highTempAlert) {
+                status_color = lv_color_hex(0xFF0000); // Rouge = alerte température
+                border_color = lv_color_hex(0xFF0000);
+                hasAlert = true;
+            } else if (history->lowHashrateAlert) {
+                status_color = lv_color_hex(0xFFAA00); // Orange = alerte hashrate
+                border_color = lv_color_hex(0xFFAA00);
+                hasAlert = true;
+            } else if (stats.temp > 70.0) {
+                status_color = lv_color_hex(0xFF6600); // Orange-rouge = chaud
+                border_color = lv_color_hex(0xFF6600);
+            } else if (stats.temp > 60.0) {
+                status_color = lv_color_hex(0xFFAA00); // Orange = tiède
+                border_color = lv_color_hex(0xFFAA00);
+            } else {
+                border_color = lv_color_hex(0x00FF00); // Bordure verte si tout va bien
+            }
+        } else {
+            // Fallback sans historique
+            if (stats.temp > 70.0) {
+                status_color = lv_color_hex(0xFF0000);
+                border_color = lv_color_hex(0xFF0000);
+            } else if (stats.temp > 60.0) {
+                status_color = lv_color_hex(0xFFAA00);
+                border_color = lv_color_hex(0xFFAA00);
+            } else {
+                border_color = lv_color_hex(0x00FF00);
+            }
+        }
+        
+        // Mettre à jour la couleur de la bordure de la carte
+        lv_obj_set_style_border_color(miner_card, border_color, 0);
+        
+        // Ajouter un indicateur d'alerte visuel si nécessaire
+        if (hasAlert) {
+            lv_obj_t* alert_indicator = lv_label_create(miner_card);
+            lv_label_set_text(alert_indicator, LV_SYMBOL_WARNING " ALERTE");
+            lv_obj_set_style_text_font(alert_indicator, &lv_font_montserrat_12, 0);
+            lv_obj_set_style_text_color(alert_indicator, lv_color_hex(0xFF0000), 0);
+            lv_obj_set_style_text_align(alert_indicator, LV_TEXT_ALIGN_CENTER, 0);
         }
 
         // Nom du device avec statut (en haut, gros)
@@ -2116,9 +2161,55 @@ void UI::showStatsScreen(int minerIndex) {
         lv_obj_set_style_text_color(max_label, lv_color_hex(0xFF0000), 0);
         lv_obj_set_style_text_align(max_label, LV_TEXT_ALIGN_CENTER, 0);
         
+        // Afficher les alertes actives
+        if (history->highTempAlert || history->lowHashrateAlert) {
+            lv_obj_t* alert_box = lv_obj_create(main_container);
+            lv_obj_set_size(alert_box, 450, 25);
+            lv_obj_set_style_bg_color(alert_box, lv_color_hex(0xFF0000), 0);
+            lv_obj_set_style_bg_opa(alert_box, LV_OPA_30, 0);
+            lv_obj_set_style_border_width(alert_box, 1, 0);
+            lv_obj_set_style_border_color(alert_box, lv_color_hex(0xFF0000), 0);
+            lv_obj_set_style_radius(alert_box, 3, 0);
+            lv_obj_set_style_pad_all(alert_box, 3, 0);
+            
+            lv_obj_t* alert_text = lv_label_create(alert_box);
+            char alert_msg[128];
+            if (history->highTempAlert && history->lowHashrateAlert) {
+                snprintf(alert_msg, sizeof(alert_msg), LV_SYMBOL_WARNING " Temp élevée + Hashrate faible");
+            } else if (history->highTempAlert) {
+                snprintf(alert_msg, sizeof(alert_msg), LV_SYMBOL_WARNING " Alerte: Température élevée (>%.0f°C)", 
+                         statsMgr.getTempThreshold());
+            } else {
+                snprintf(alert_msg, sizeof(alert_msg), LV_SYMBOL_WARNING " Alerte: Hashrate faible (<%.0f GH/s)", 
+                         statsMgr.getHashrateThreshold());
+            }
+            lv_label_set_text(alert_text, alert_msg);
+            lv_obj_set_style_text_font(alert_text, &lv_font_montserrat_12, 0);
+            lv_obj_set_style_text_color(alert_text, lv_color_hex(0xFF0000), 0);
+            lv_obj_center(alert_text);
+        }
+        
+        // Afficher l'efficacité si disponible
+        if (!history->efficiencyHistory.empty()) {
+            // Calculer l'efficacité moyenne
+            float avgEfficiency = 0;
+            for (const auto& point : history->efficiencyHistory) {
+                avgEfficiency += point.value;
+            }
+            avgEfficiency /= history->efficiencyHistory.size();
+            
+            lv_obj_t* efficiency_label = lv_label_create(main_container);
+            char eff_text[64];
+            snprintf(eff_text, sizeof(eff_text), "Efficacité moyenne: %.1f J/TH", avgEfficiency);
+            lv_label_set_text(efficiency_label, eff_text);
+            lv_obj_set_style_text_font(efficiency_label, &lv_font_montserrat_12, 0);
+            lv_obj_set_style_text_color(efficiency_label, lv_color_hex(0x00FFAA), 0);
+            lv_obj_set_style_text_align(efficiency_label, LV_TEXT_ALIGN_CENTER, 0);
+        }
+        
         // Graphique Hashrate
         lv_obj_t* chart_hashrate = lv_chart_create(main_container);
-        lv_obj_set_size(chart_hashrate, 450, 70);
+        lv_obj_set_size(chart_hashrate, 450, 60); // Légèrement réduit pour faire de la place
         lv_obj_set_style_bg_color(chart_hashrate, lv_color_hex(0x1a1a1a), 0);
         lv_obj_set_style_border_color(chart_hashrate, lv_color_hex(0xFF6600), 0);
         lv_obj_set_style_border_width(chart_hashrate, 1, 0);
@@ -2139,12 +2230,12 @@ void UI::showStatsScreen(int minerIndex) {
         // Label pour le graphique hashrate
         lv_obj_t* chart_label1 = lv_label_create(main_container);
         lv_label_set_text(chart_label1, "Hashrate (GH/s) - 24h");
-        lv_obj_set_style_text_font(chart_label1, &lv_font_montserrat_12, 0);
+        lv_obj_set_style_text_font(chart_label1, &lv_font_montserrat_10, 0); // Police plus petite
         lv_obj_set_style_text_color(chart_label1, lv_color_hex(0x00FF00), 0);
         
         // Graphique Température
         lv_obj_t* chart_temp = lv_chart_create(main_container);
-        lv_obj_set_size(chart_temp, 450, 70);
+        lv_obj_set_size(chart_temp, 450, 60); // Légèrement réduit
         lv_obj_set_style_bg_color(chart_temp, lv_color_hex(0x1a1a1a), 0);
         lv_obj_set_style_border_color(chart_temp, lv_color_hex(0xFF0000), 0);
         lv_obj_set_style_border_width(chart_temp, 1, 0);
@@ -2165,7 +2256,7 @@ void UI::showStatsScreen(int minerIndex) {
         // Label pour le graphique température
         lv_obj_t* chart_label2 = lv_label_create(main_container);
         lv_label_set_text(chart_label2, "Température (°C) - 24h");
-        lv_obj_set_style_text_font(chart_label2, &lv_font_montserrat_12, 0);
+        lv_obj_set_style_text_font(chart_label2, &lv_font_montserrat_10, 0); // Police plus petite
         lv_obj_set_style_text_color(chart_label2, lv_color_hex(0xFF6600), 0);
     }
     

@@ -23,6 +23,9 @@
 - **Power Consumption**: Total power tracking with automatic kW conversion
 - **Hashrate Display**: Real-time hashrate monitoring for all connected miners
 - **Online Status**: Visual indicators for each miner's connectivity
+- **⭐ NEW: Historical Statistics**: 24-hour charts for hashrate and temperature per miner
+- **⭐ NEW: Performance Alerts**: Visual alerts for high temperature or low hashrate
+- **⭐ NEW: Efficiency Metrics**: J/TH calculation and display for each miner
 
 ### ₿ **Bitcoin Price Integration**
 - **Live BTC Price**: Real-time Bitcoin price from CoinGecko API
@@ -32,21 +35,24 @@
 ### 🎨 **Sleek User Interface**
 - **480×272 Touchscreen**: Full-color capacitive touch display
 - **Ultra-Responsive Touch**: <1ms latency with optimized GT911 driver
-- **Multiple Screens**: Clock, Miners, Config, WiFi management
-- **Professional Design**: Dark theme with orange accents
+- **Multiple Screens**: Clock, Miners, Statistics (NEW), Config, WiFi management
+- **Professional Design**: Dark theme with orange/red accents
 - **Smooth Animations**: LVGL-powered UI transitions
+- **⭐ NEW: Statistics Screen**: Detailed charts and metrics for each miner
 
 ### ⚙️ **Easy Configuration**
 - **WiFi Portal**: Built-in configuration interface
 - **Miner Management**: Add/remove miners via web interface
 - **Timezone Support**: Automatic time synchronization
 - **Persistent Storage**: Settings saved to SPIFFS
+- **⭐ NEW: Configurable Alert Thresholds**: Set temperature and hashrate limits
 
 ### ⚡ **Optimized Performance**
 - **ESP32-S3 @ 240MHz**: Maximum CPU speed for smooth operation
 - **Debug Level 0**: Optimized for production use
 - **Single-Core Stable**: Reliable operation on Core 1
 - **Low Memory Footprint**: 44.5% flash, 34.5% RAM usage
+- **⭐ NEW: Efficient Data Storage**: Smart 24-hour historical data management
 
 ---
 
@@ -284,12 +290,14 @@ pio run --target upload
 
 ## 🚧 Roadmap
 
-### Version 1.1 (Planned)
+### Version 1.1 (Current - In Progress)
+- [x] **Historical hashrate graphs** - 24h charts implemented
+- [x] **Efficiency metrics (J/TH)** - Calculated and displayed
+- [x] **Temperature monitoring with alerts** - Visual alerts active
+- [x] **Statistics screen per miner** - Detailed charts and metrics
 - [ ] Animated transitions between screens
-- [ ] Historical hashrate graphs
-- [ ] Efficiency metrics (J/TH)
-- [ ] Temperature monitoring with alerts
 - [ ] Custom themes and color schemes
+- [ ] Data export functionality (CSV/JSON)
 
 ### Version 2.0 (Future)
 - [ ] OTA firmware updates
