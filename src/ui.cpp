@@ -7,6 +7,7 @@
 #include "bitaxe_api.h"
 #include "bitcoin_api.h"
 #include "weather_manager.h"
+#include "stats_manager.h"
 
 // Variables pour l'animation de slide
 static lv_obj_t* animating_label = nullptr;
@@ -17,6 +18,7 @@ static lv_coord_t original_label_x = 0;
 static lv_obj_t *welcome_screen = nullptr;
 static lv_obj_t *clock_screen = nullptr;
 static lv_obj_t *miners_screen = nullptr;
+static lv_obj_t *stats_screen = nullptr;  // Écran de statistiques
 static lv_obj_t *dashboard_screen = nullptr;  // DEPRECATED
 static lv_obj_t *time_label = nullptr;
 static lv_obj_t *date_label = nullptr;
@@ -77,7 +79,7 @@ static lv_timer_t *miners_refresh_timer = nullptr;  // Timer auto-refresh pour l
 static lv_obj_t* page_indicator = nullptr;  // Indicateur de page
 
 // État actuel de l'écran
-enum ScreenState { WELCOME_SCREEN, CLOCK_SCREEN, MINERS_SCREEN, DASHBOARD_SCREEN };
+enum ScreenState { WELCOME_SCREEN, CLOCK_SCREEN, MINERS_SCREEN, STATS_SCREEN, DASHBOARD_SCREEN };
 static ScreenState current_screen = WELCOME_SCREEN;
 
 // Fonction pour rafraîchir le cache des statistiques de tous les mineurs
@@ -305,12 +307,61 @@ static void displayMinerInCarousel(int minerIndex) {
     if (getCachedStats(minerIndex, stats)) {
         device->online = true;
 
-        // Déterminer la couleur selon l'état
+        // Obtenir l'historique pour vérifier les alertes
+        StatsManager& statsMgr = StatsManager::getInstance();
+        MinerHistory* history = statsMgr.getMinerHistory(device->ip);
+        
+        // Déterminer la couleur selon l'état avec priorité aux alertes
         lv_color_t status_color = lv_color_hex(0x00FF00); // Vert = OK
-        if (stats.temp > 70.0) {
-            status_color = lv_color_hex(0xFF0000); // Rouge = trop chaud
-        } else if (stats.temp > 60.0) {
-            status_color = lv_color_hex(0xFFAA00); // Orange = chaud
+        lv_color_t border_color = lv_color_hex(0xFF0000); // Bordure rouge par défaut
+        
+        // Vérifier les alertes actives
+        bool hasAlert = false;
+        if (history) {
+            if (history->highTempAlert) {
+                status_color = lv_color_hex(0xFF0000); // Rouge = alerte température
+                border_color = lv_color_hex(0xFF0000);
+                hasAlert = true;
+            } else if (history->lowHashrateAlert) {
+                status_color = lv_color_hex(0xFFAA00); // Orange = alerte hashrate
+                border_color = lv_color_hex(0xFFAA00);
+                hasAlert = true;
+            } else if (stats.temp > 70.0) {
+                status_color = lv_color_hex(0xFF6600); // Orange-rouge = chaud
+                border_color = lv_color_hex(0xFF6600);
+            } else if (stats.temp > 60.0) {
+                status_color = lv_color_hex(0xFFAA00); // Orange = tiède
+                border_color = lv_color_hex(0xFFAA00);
+            } else {
+                border_color = lv_color_hex(0x00FF00); // Bordure verte si tout va bien
+            }
+        } else {
+            // Fallback sans historique
+            if (stats.temp > 70.0) {
+                status_color = lv_color_hex(0xFF0000);
+                border_color = lv_color_hex(0xFF0000);
+            } else if (stats.temp > 60.0) {
+                status_color = lv_color_hex(0xFFAA00);
+                border_color = lv_color_hex(0xFFAA00);
+            } else {
+                border_color = lv_color_hex(0x00FF00);
+            }
+        }
+        
+        // Mettre à jour la couleur de la bordure de la carte
+        lv_obj_set_style_border_color(miner_card, border_color, 0);
+        
+        // Ajouter un indicateur d'alerte visuel si nécessaire (en haut de la carte)
+        // Note: The entire miner_card is cleaned and recreated on each update (via lv_obj_clean),
+        // so no explicit cleanup of old alert indicators is needed
+        if (hasAlert) {
+            lv_obj_t* alert_indicator = lv_label_create(miner_card);
+            lv_label_set_text(alert_indicator, LV_SYMBOL_WARNING " ALERTE");
+            lv_obj_set_style_text_font(alert_indicator, &lv_font_montserrat_12, 0);
+            lv_obj_set_style_text_color(alert_indicator, lv_color_hex(0xFF0000), 0);
+            lv_obj_set_style_text_align(alert_indicator, LV_TEXT_ALIGN_CENTER, 0);
+            lv_obj_set_width(alert_indicator, LV_PCT(100));  // Full width
+            // Positioned automatically by flex layout (will be first element)
         }
 
         // Nom du device avec statut (en haut, gros)
@@ -360,14 +411,34 @@ static void displayMinerInCarousel(int minerIndex) {
         lv_obj_set_style_text_align(stats_line2, LV_TEXT_ALIGN_CENTER, 0);
 
         // Boutons d'action (en bas, centrés) - DESIGN AMÉLIORÉ, TRÈS FINS
+        // 4 boutons: Stats (STS), Restart (RST), Reboot (RBT), Config (CFG)
         lv_obj_t* btn_row = lv_obj_create(miner_card);
-        lv_obj_set_size(btn_row, 180, 16); // Dimensions réduites
+        lv_obj_set_size(btn_row, 220, 16); // Width adjusted for 4 buttons + spacing
         lv_obj_set_style_bg_color(btn_row, lv_color_hex(0x2a2a2a), 0);
         lv_obj_set_style_border_width(btn_row, 0, 0);
         lv_obj_set_style_pad_all(btn_row, 1, 0); // Padding minimal
         lv_obj_set_flex_flow(btn_row, LV_FLEX_FLOW_ROW);
         lv_obj_set_style_pad_column(btn_row, 2, 0); // Espacement minimal
         lv_obj_set_flex_align(btn_row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+        // Bouton Stats - NOUVEAU
+        lv_obj_t* btn_stats = lv_button_create(btn_row);
+        lv_obj_set_size(btn_stats, 50, 14); // Très petit
+        lv_obj_set_style_bg_color(btn_stats, lv_color_hex(0x00FF00), 0);
+        lv_obj_set_style_radius(btn_stats, 1, 0); // Presque carré
+        lv_obj_add_flag(btn_stats, LV_OBJ_FLAG_CLICKABLE);
+        // Store minerIndex as user_data using intptr_t (standard C++ practice for small integers)
+        // This is safe, portable, and avoids memory allocation overhead
+        lv_obj_add_event_cb(btn_stats, [](lv_event_t * e) {
+            // Retrieve minerIndex from user_data
+            intptr_t index = (intptr_t)lv_event_get_user_data(e);
+            Serial.printf("[UI] Stats button clicked for miner %d\n", (int)index);
+            UI::getInstance().showStatsScreen((int)index);
+        }, LV_EVENT_CLICKED, (void*)(intptr_t)minerIndex);
+        lv_obj_t* lbl_stats = lv_label_create(btn_stats);
+        lv_label_set_text(lbl_stats, "STS");
+        lv_obj_set_style_text_font(lbl_stats, &lv_font_montserrat_10, 0); // Small font
+        lv_obj_center(lbl_stats);
 
         // Bouton Restart - TRÈS FIN
         lv_obj_t* btn_restart = lv_button_create(btn_row);
@@ -378,7 +449,7 @@ static void displayMinerInCarousel(int minerIndex) {
         lv_obj_add_event_cb(btn_restart, miner_restart_cb, LV_EVENT_CLICKED, device);
         lv_obj_t* lbl_restart = lv_label_create(btn_restart);
         lv_label_set_text(lbl_restart, "RST");
-        lv_obj_set_style_text_font(lbl_restart, &lv_font_montserrat_16, 0); // Police minuscule
+        lv_obj_set_style_text_font(lbl_restart, &lv_font_montserrat_10, 0); // Small font
         lv_obj_center(lbl_restart);
 
         // Bouton Reboot - TRÈS FIN
@@ -390,7 +461,7 @@ static void displayMinerInCarousel(int minerIndex) {
         lv_obj_add_event_cb(btn_reboot, miner_reboot_cb, LV_EVENT_CLICKED, device);
         lv_obj_t* lbl_reboot = lv_label_create(btn_reboot);
         lv_label_set_text(lbl_reboot, "RBT");
-        lv_obj_set_style_text_font(lbl_reboot, &lv_font_montserrat_16, 0); // Police minuscule
+        lv_obj_set_style_text_font(lbl_reboot, &lv_font_montserrat_10, 0); // Small font
         lv_obj_center(lbl_reboot);
 
         // Bouton Config - TRÈS FIN
@@ -402,7 +473,7 @@ static void displayMinerInCarousel(int minerIndex) {
         lv_obj_add_event_cb(btn_config, miner_config_cb, LV_EVENT_CLICKED, device);
         lv_obj_t* lbl_config = lv_label_create(btn_config);
         lv_label_set_text(lbl_config, "CFG");
-        lv_obj_set_style_text_font(lbl_config, &lv_font_montserrat_16, 0); // Police minuscule
+        lv_obj_set_style_text_font(lbl_config, &lv_font_montserrat_10, 0); // Small font
         lv_obj_center(lbl_config);
 
     } else {
@@ -1836,6 +1907,9 @@ void UI::checkBitaxeStatus() {
                 maxBestDiff = stats.bestDiff;
             }
             
+            // Ajouter les données au StatsManager pour l'historique
+            StatsManager::getInstance().addDataPoint(device->ip, stats.hashrate, stats.temp, stats.power);
+            
             Serial.printf("[UI]   [%d] %s - ONLINE (%.1f GH/s, %.1f°C, %.1fW, bestDiff=%u)\n", 
                 i, device->name.c_str(), stats.hashrate, stats.temp, stats.power, stats.bestDiff);
         } else {
@@ -1981,5 +2055,238 @@ void UI::updateWeatherDisplay() {
     lv_obj_invalidate(weather_label);
     lv_obj_invalidate(weather_icon_label);
     lv_refr_now(NULL);  // Force immediate redraw
+}
+
+// Nouvelle fonction: Afficher l'écran de statistiques pour un mineur spécifique
+void UI::showStatsScreen(int minerIndex) {
+    Serial.printf("[UI] Showing statistics screen for miner %d...\n", minerIndex);
+    
+    WifiManager* wifi = WifiManager::getInstance();
+    if (minerIndex < 0 || minerIndex >= wifi->getBitaxeCount()) {
+        Serial.println("[UI] Invalid miner index, returning to miners screen");
+        showMinersScreen();
+        return;
+    }
+    
+    BitaxeDevice* device = wifi->getBitaxe(minerIndex);
+    if (!device) {
+        Serial.println("[UI] Miner device not found, returning to miners screen");
+        showMinersScreen();
+        return;
+    }
+    
+    // Nettoyer les carrés tombants
+    cleanupFallingSquares();
+    squares_animation_active = false;
+    
+    // Pause le timer de l'horloge
+    if (time_update_timer != nullptr) {
+        lv_timer_pause(time_update_timer);
+    }
+    
+    // Nettoyer l'écran actuel
+    lv_obj_t* scr = lv_screen_active();
+    lv_obj_clean(scr);
+    lv_obj_set_style_bg_color(scr, lv_color_hex(0x000000), 0);
+    
+    current_screen = STATS_SCREEN;
+    stats_screen = scr;
+    
+    // Container principal
+    lv_obj_t* main_container = lv_obj_create(scr);
+    lv_obj_set_size(main_container, 470, 262);
+    lv_obj_set_style_bg_color(main_container, lv_color_hex(0x0a0a0a), 0);
+    lv_obj_set_style_border_width(main_container, 2, 0);
+    lv_obj_set_style_border_color(main_container, lv_color_hex(0xFF0000), 0);
+    lv_obj_set_style_radius(main_container, 5, 0);
+    lv_obj_set_style_pad_all(main_container, 8, 0);
+    lv_obj_align(main_container, LV_ALIGN_TOP_LEFT, 5, 5);
+    lv_obj_set_flex_flow(main_container, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_row(main_container, 4, 0);
+    
+    // Titre avec nom du mineur
+    lv_obj_t* title = lv_label_create(main_container);
+    char title_text[64];
+    snprintf(title_text, sizeof(title_text), "STATS: %s", device->name.c_str());
+    lv_label_set_text(title, title_text);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(title, lv_color_hex(0xFF6600), 0);
+    lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(title, LV_PCT(100));
+    
+    // Obtenir l'historique du mineur
+    StatsManager& statsMgr = StatsManager::getInstance();
+    MinerHistory* history = statsMgr.getMinerHistory(device->ip);
+    
+    if (!history || history->hashrateHistory.empty()) {
+        // Pas assez de données
+        lv_obj_t* no_data = lv_label_create(main_container);
+        lv_label_set_text(no_data, "\n\nPas assez de données\npour afficher les statistiques.\n\n"
+                                    "Les données sont collectées\ntoutes les 5 minutes.");
+        lv_obj_set_style_text_font(no_data, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(no_data, lv_color_hex(0x808080), 0);
+        lv_obj_set_style_text_align(no_data, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_width(no_data, LV_PCT(100));
+    } else {
+        // Afficher les statistiques de session
+        lv_obj_t* stats_container = lv_obj_create(main_container);
+        lv_obj_set_size(stats_container, 450, 40);
+        lv_obj_set_style_bg_color(stats_container, lv_color_hex(0x1a1a1a), 0);
+        lv_obj_set_style_border_width(stats_container, 1, 0);
+        lv_obj_set_style_border_color(stats_container, lv_color_hex(0x444444), 0);
+        lv_obj_set_style_radius(stats_container, 3, 0);
+        lv_obj_set_style_pad_all(stats_container, 4, 0);
+        lv_obj_set_flex_flow(stats_container, LV_FLEX_FLOW_ROW);
+        lv_obj_set_flex_align(stats_container, LV_FLEX_ALIGN_SPACE_AROUND, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        
+        // Stats: Avg / Min / Max
+        lv_obj_t* avg_label = lv_label_create(stats_container);
+        char avg_text[32];
+        snprintf(avg_text, sizeof(avg_text), "Avg\n%.1f", history->avgHashrate);
+        lv_label_set_text(avg_label, avg_text);
+        lv_obj_set_style_text_font(avg_label, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(avg_label, lv_color_hex(0x00FF00), 0);
+        lv_obj_set_style_text_align(avg_label, LV_TEXT_ALIGN_CENTER, 0);
+        
+        lv_obj_t* min_label = lv_label_create(stats_container);
+        char min_text[32];
+        snprintf(min_text, sizeof(min_text), "Min\n%.1f", history->minHashrate);
+        lv_label_set_text(min_label, min_text);
+        lv_obj_set_style_text_font(min_label, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(min_label, lv_color_hex(0xFFAA00), 0);
+        lv_obj_set_style_text_align(min_label, LV_TEXT_ALIGN_CENTER, 0);
+        
+        lv_obj_t* max_label = lv_label_create(stats_container);
+        char max_text[32];
+        snprintf(max_text, sizeof(max_text), "Max\n%.1f", history->maxHashrate);
+        lv_label_set_text(max_label, max_text);
+        lv_obj_set_style_text_font(max_label, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(max_label, lv_color_hex(0xFF0000), 0);
+        lv_obj_set_style_text_align(max_label, LV_TEXT_ALIGN_CENTER, 0);
+        
+        // Afficher les alertes actives
+        if (history->highTempAlert || history->lowHashrateAlert) {
+            lv_obj_t* alert_box = lv_obj_create(main_container);
+            lv_obj_set_size(alert_box, 450, 25);
+            lv_obj_set_style_bg_color(alert_box, lv_color_hex(0xFF0000), 0);
+            lv_obj_set_style_bg_opa(alert_box, LV_OPA_30, 0);
+            lv_obj_set_style_border_width(alert_box, 1, 0);
+            lv_obj_set_style_border_color(alert_box, lv_color_hex(0xFF0000), 0);
+            lv_obj_set_style_radius(alert_box, 3, 0);
+            lv_obj_set_style_pad_all(alert_box, 3, 0);
+            
+            lv_obj_t* alert_text = lv_label_create(alert_box);
+            char alert_msg[128];
+            if (history->highTempAlert && history->lowHashrateAlert) {
+                snprintf(alert_msg, sizeof(alert_msg), LV_SYMBOL_WARNING " Temp élevée + Hashrate faible");
+            } else if (history->highTempAlert) {
+                snprintf(alert_msg, sizeof(alert_msg), LV_SYMBOL_WARNING " Alerte: Température élevée (>%.0f°C)", 
+                         statsMgr.getTempThreshold());
+            } else {
+                snprintf(alert_msg, sizeof(alert_msg), LV_SYMBOL_WARNING " Alerte: Hashrate faible (<%.0f GH/s)", 
+                         statsMgr.getHashrateThreshold());
+            }
+            lv_label_set_text(alert_text, alert_msg);
+            lv_obj_set_style_text_font(alert_text, &lv_font_montserrat_12, 0);
+            lv_obj_set_style_text_color(alert_text, lv_color_hex(0xFF0000), 0);
+            lv_obj_center(alert_text);
+        }
+        
+        // Afficher l'efficacité si disponible
+        if (!history->efficiencyHistory.empty()) {
+            // Calculer l'efficacité moyenne
+            float avgEfficiency = 0;
+            for (const auto& point : history->efficiencyHistory) {
+                avgEfficiency += point.value;
+            }
+            avgEfficiency /= history->efficiencyHistory.size();
+            
+            lv_obj_t* efficiency_label = lv_label_create(main_container);
+            char eff_text[64];
+            snprintf(eff_text, sizeof(eff_text), "Efficacité moyenne: %.1f J/TH", avgEfficiency);
+            lv_label_set_text(efficiency_label, eff_text);
+            lv_obj_set_style_text_font(efficiency_label, &lv_font_montserrat_12, 0);
+            lv_obj_set_style_text_color(efficiency_label, lv_color_hex(0x00FFAA), 0);
+            lv_obj_set_style_text_align(efficiency_label, LV_TEXT_ALIGN_CENTER, 0);
+        }
+        
+        // Graphique Hashrate
+        lv_obj_t* chart_hashrate = lv_chart_create(main_container);
+        lv_obj_set_size(chart_hashrate, 450, 60); // Légèrement réduit pour faire de la place
+        lv_obj_set_style_bg_color(chart_hashrate, lv_color_hex(0x1a1a1a), 0);
+        lv_obj_set_style_border_color(chart_hashrate, lv_color_hex(0xFF6600), 0);
+        lv_obj_set_style_border_width(chart_hashrate, 1, 0);
+        lv_chart_set_type(chart_hashrate, LV_CHART_TYPE_LINE);
+        lv_chart_set_point_count(chart_hashrate, history->hashrateHistory.size());
+        lv_chart_set_div_line_count(chart_hashrate, 3, 5);
+        
+        // Série pour hashrate
+        lv_chart_series_t* ser_hashrate = lv_chart_add_series(chart_hashrate, 
+                                                               lv_color_hex(0x00FF00), 
+                                                               LV_CHART_AXIS_PRIMARY_Y);
+        
+        // Remplir les données
+        for (size_t i = 0; i < history->hashrateHistory.size(); i++) {
+            lv_chart_set_next_value(chart_hashrate, ser_hashrate, (int32_t)history->hashrateHistory[i].value);
+        }
+        
+        // Label pour le graphique hashrate
+        lv_obj_t* chart_label1 = lv_label_create(main_container);
+        lv_label_set_text(chart_label1, "Hashrate (GH/s) - 24h");
+        lv_obj_set_style_text_font(chart_label1, &lv_font_montserrat_10, 0); // Police plus petite
+        lv_obj_set_style_text_color(chart_label1, lv_color_hex(0x00FF00), 0);
+        
+        // Graphique Température
+        lv_obj_t* chart_temp = lv_chart_create(main_container);
+        lv_obj_set_size(chart_temp, 450, 60); // Légèrement réduit
+        lv_obj_set_style_bg_color(chart_temp, lv_color_hex(0x1a1a1a), 0);
+        lv_obj_set_style_border_color(chart_temp, lv_color_hex(0xFF0000), 0);
+        lv_obj_set_style_border_width(chart_temp, 1, 0);
+        lv_chart_set_type(chart_temp, LV_CHART_TYPE_LINE);
+        lv_chart_set_point_count(chart_temp, history->temperatureHistory.size());
+        lv_chart_set_div_line_count(chart_temp, 3, 5);
+        
+        // Série pour température
+        lv_chart_series_t* ser_temp = lv_chart_add_series(chart_temp, 
+                                                           lv_color_hex(0xFF6600), 
+                                                           LV_CHART_AXIS_PRIMARY_Y);
+        
+        // Remplir les données de température
+        for (size_t i = 0; i < history->temperatureHistory.size(); i++) {
+            lv_chart_set_next_value(chart_temp, ser_temp, (int32_t)history->temperatureHistory[i].value);
+        }
+        
+        // Label pour le graphique température
+        lv_obj_t* chart_label2 = lv_label_create(main_container);
+        lv_label_set_text(chart_label2, "Température (°C) - 24h");
+        lv_obj_set_style_text_font(chart_label2, &lv_font_montserrat_10, 0); // Police plus petite
+        lv_obj_set_style_text_color(chart_label2, lv_color_hex(0xFF6600), 0);
+    }
+    
+    // Bouton Back en bas
+    lv_obj_t* btn_back = lv_button_create(main_container);
+    lv_obj_set_size(btn_back, 100, 25);
+    lv_obj_set_style_bg_color(btn_back, lv_color_hex(0x2a2a2a), 0);
+    lv_obj_set_style_border_width(btn_back, 1, 0);
+    lv_obj_set_style_border_color(btn_back, lv_color_hex(0x666666), 0);
+    lv_obj_set_style_radius(btn_back, 3, 0);
+    lv_obj_add_flag(btn_back, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(btn_back, [](lv_event_t * e) {
+        if(lv_event_get_code(e) == LV_EVENT_CLICKED) {
+            Serial.println("[UI] Back from stats - returning to miners screen");
+            UI::getInstance().showMinersScreen();
+        }
+    }, LV_EVENT_CLICKED, nullptr);
+    
+    lv_obj_t* label_back = lv_label_create(btn_back);
+    lv_label_set_text(label_back, LV_SYMBOL_LEFT " Retour");
+    lv_obj_set_style_text_font(label_back, &lv_font_montserrat_14, 0);
+    lv_obj_center(label_back);
+    
+    // Force refresh
+    lv_refr_now(NULL);
+    
+    Serial.println("[UI] Statistics screen created");
+}
 }
 
