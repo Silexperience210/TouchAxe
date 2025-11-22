@@ -29,10 +29,10 @@ MinerHistory* StatsManager::findOrCreateHistory(const String& minerIP) {
     newHistory.minerName = "";  // Sera rempli par le nom du device
     newHistory.sessionStart = millis() / 1000;
     newHistory.maxHashrate = 0;
-    newHistory.minHashrate = 999999;
+    newHistory.minHashrate = 999999.0f;  // Large initial value for min tracking
     newHistory.avgHashrate = 0;
     newHistory.maxTemp = 0;
-    newHistory.minTemp = 999;
+    newHistory.minTemp = 999.0f;  // Large initial value for min tracking
     newHistory.highTempAlert = false;
     newHistory.lowHashrateAlert = false;
     newHistory.offlineAlert = false;

@@ -424,16 +424,17 @@ static void displayMinerInCarousel(int minerIndex) {
         lv_obj_set_style_bg_color(btn_stats, lv_color_hex(0x00FF00), 0);
         lv_obj_set_style_radius(btn_stats, 1, 0); // Presque carré
         lv_obj_add_flag(btn_stats, LV_OBJ_FLAG_CLICKABLE);
-        // Stocker minerIndex directement comme user_data (cast en void*)
+        // Store minerIndex as user_data using intptr_t (standard C++ practice for small integers)
+        // This is safe, portable, and avoids memory allocation overhead
         lv_obj_add_event_cb(btn_stats, [](lv_event_t * e) {
-            // Récupérer minerIndex depuis user_data
+            // Retrieve minerIndex from user_data
             intptr_t index = (intptr_t)lv_event_get_user_data(e);
             Serial.printf("[UI] Stats button clicked for miner %d\n", (int)index);
             UI::getInstance().showStatsScreen((int)index);
-        }, LV_EVENT_CLICKED, (void*)(intptr_t)minerIndex);  // Cast sans allocation
+        }, LV_EVENT_CLICKED, (void*)(intptr_t)minerIndex);
         lv_obj_t* lbl_stats = lv_label_create(btn_stats);
         lv_label_set_text(lbl_stats, "STS");
-        lv_obj_set_style_text_font(lbl_stats, &lv_font_montserrat_16, 0); // Police minuscule
+        lv_obj_set_style_text_font(lbl_stats, &lv_font_montserrat_10, 0); // Small font
         lv_obj_center(lbl_stats);
 
         // Bouton Restart - TRÈS FIN
@@ -445,7 +446,7 @@ static void displayMinerInCarousel(int minerIndex) {
         lv_obj_add_event_cb(btn_restart, miner_restart_cb, LV_EVENT_CLICKED, device);
         lv_obj_t* lbl_restart = lv_label_create(btn_restart);
         lv_label_set_text(lbl_restart, "RST");
-        lv_obj_set_style_text_font(lbl_restart, &lv_font_montserrat_16, 0); // Police minuscule
+        lv_obj_set_style_text_font(lbl_restart, &lv_font_montserrat_10, 0); // Small font
         lv_obj_center(lbl_restart);
 
         // Bouton Reboot - TRÈS FIN
@@ -457,7 +458,7 @@ static void displayMinerInCarousel(int minerIndex) {
         lv_obj_add_event_cb(btn_reboot, miner_reboot_cb, LV_EVENT_CLICKED, device);
         lv_obj_t* lbl_reboot = lv_label_create(btn_reboot);
         lv_label_set_text(lbl_reboot, "RBT");
-        lv_obj_set_style_text_font(lbl_reboot, &lv_font_montserrat_16, 0); // Police minuscule
+        lv_obj_set_style_text_font(lbl_reboot, &lv_font_montserrat_10, 0); // Small font
         lv_obj_center(lbl_reboot);
 
         // Bouton Config - TRÈS FIN
@@ -469,7 +470,7 @@ static void displayMinerInCarousel(int minerIndex) {
         lv_obj_add_event_cb(btn_config, miner_config_cb, LV_EVENT_CLICKED, device);
         lv_obj_t* lbl_config = lv_label_create(btn_config);
         lv_label_set_text(lbl_config, "CFG");
-        lv_obj_set_style_text_font(lbl_config, &lv_font_montserrat_16, 0); // Police minuscule
+        lv_obj_set_style_text_font(lbl_config, &lv_font_montserrat_10, 0); // Small font
         lv_obj_center(lbl_config);
 
     } else {
