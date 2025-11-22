@@ -18,6 +18,7 @@ public:
     void showWelcomeScreen();
     void showClockScreen();     // Page principale : horloge + hashrate total
     void showMinersScreen();    // Page détails des mineurs
+    void showStatsScreen(int minerIndex);  // Page statistiques pour un mineur spécifique
     void showDashboard();       // DEPRECATED - kept for compatibility
     void showMainMenu();
     void updateClock();         // Update clock display (called from loop)

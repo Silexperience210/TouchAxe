@@ -11,6 +11,7 @@
 #include "wifi_manager.h"
 #include "weather_manager.h"
 #include "bitcoin_api.h"
+#include "stats_manager.h"
 
 static esp_lcd_panel_handle_t panel_handle = NULL;
 static lv_display_t *disp = NULL;
@@ -280,6 +281,10 @@ void setup() {
     Serial.println("Initializing WeatherManager...");
     WeatherManager::getInstance()->init();
     
+    // Initialiser le StatsManager pour les statistiques des mineurs
+    Serial.println("Initializing StatsManager...");
+    StatsManager::getInstance().init();
+    
     Serial.println("\n=== SETUP COMPLETE ===\n");
 }
 
@@ -429,6 +434,14 @@ void loop() {
             WeatherManager::getInstance()->updateWeather();
             UI::getInstance().updateWeatherDisplay();
         }
+    }
+    
+    // Cleanup old statistics data every hour (3600000ms)
+    static uint32_t last_stats_cleanup = 0;
+    if (millis() - last_stats_cleanup > 3600000) {
+        last_stats_cleanup = millis();
+        Serial.println("[MAIN] Cleaning old statistics data...");
+        StatsManager::getInstance().cleanOldData();
     }
     
     // *** OPTIMIZED: Call lv_timer_handler() every 2ms instead of every millisecond ***
