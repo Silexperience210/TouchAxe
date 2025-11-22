@@ -351,13 +351,15 @@ static void displayMinerInCarousel(int minerIndex) {
         // Mettre à jour la couleur de la bordure de la carte
         lv_obj_set_style_border_color(miner_card, border_color, 0);
         
-        // Ajouter un indicateur d'alerte visuel si nécessaire
+        // Ajouter un indicateur d'alerte visuel si nécessaire (en haut de la carte)
         if (hasAlert) {
             lv_obj_t* alert_indicator = lv_label_create(miner_card);
             lv_label_set_text(alert_indicator, LV_SYMBOL_WARNING " ALERTE");
             lv_obj_set_style_text_font(alert_indicator, &lv_font_montserrat_12, 0);
             lv_obj_set_style_text_color(alert_indicator, lv_color_hex(0xFF0000), 0);
             lv_obj_set_style_text_align(alert_indicator, LV_TEXT_ALIGN_CENTER, 0);
+            lv_obj_set_width(alert_indicator, LV_PCT(100));  // Pleine largeur
+            // Positionné automatiquement par le flex layout (sera le premier élément)
         }
 
         // Nom du device avec statut (en haut, gros)
@@ -422,16 +424,13 @@ static void displayMinerInCarousel(int minerIndex) {
         lv_obj_set_style_bg_color(btn_stats, lv_color_hex(0x00FF00), 0);
         lv_obj_set_style_radius(btn_stats, 1, 0); // Presque carré
         lv_obj_add_flag(btn_stats, LV_OBJ_FLAG_CLICKABLE);
-        // Capturer minerIndex dans une variable locale pour le callback
-        int* pMinerIndex = new int(minerIndex);
+        // Stocker minerIndex directement comme user_data (cast en void*)
         lv_obj_add_event_cb(btn_stats, [](lv_event_t * e) {
-            int* pIndex = (int*)lv_event_get_user_data(e);
-            if (pIndex) {
-                Serial.printf("[UI] Stats button clicked for miner %d\n", *pIndex);
-                UI::getInstance().showStatsScreen(*pIndex);
-                delete pIndex;  // Nettoyer la mémoire
-            }
-        }, LV_EVENT_CLICKED, pMinerIndex);
+            // Récupérer minerIndex depuis user_data
+            intptr_t index = (intptr_t)lv_event_get_user_data(e);
+            Serial.printf("[UI] Stats button clicked for miner %d\n", (int)index);
+            UI::getInstance().showStatsScreen((int)index);
+        }, LV_EVENT_CLICKED, (void*)(intptr_t)minerIndex);  // Cast sans allocation
         lv_obj_t* lbl_stats = lv_label_create(btn_stats);
         lv_label_set_text(lbl_stats, "STS");
         lv_obj_set_style_text_font(lbl_stats, &lv_font_montserrat_16, 0); // Police minuscule

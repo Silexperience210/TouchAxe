@@ -56,13 +56,14 @@ void StatsManager::addDataPoint(const String& minerIP, float hashrate, float tem
     
     uint32_t now = millis() / 1000;  // Timestamp en secondes
     
-    // Vérifier si assez de temps s'est écoulé depuis le dernier point
-    // (éviter d'ajouter trop de points)
-    static uint32_t lastDataTime = 0;
-    if (now - lastDataTime < (DATA_INTERVAL_MS / 1000)) {
-        return;  // Trop tôt, attendre
+    // Vérifier si assez de temps s'est écoulé depuis le dernier point pour CE mineur
+    // (utiliser le timestamp du dernier point au lieu d'une variable statique globale)
+    if (!history->hashrateHistory.empty()) {
+        uint32_t lastTimestamp = history->hashrateHistory.back().timestamp;
+        if (now - lastTimestamp < (DATA_INTERVAL_MS / 1000)) {
+            return;  // Trop tôt pour ce mineur, attendre
+        }
     }
-    lastDataTime = now;
     
     // Ajouter les points de données
     StatDataPoint hashratePoint = {now, hashrate};
