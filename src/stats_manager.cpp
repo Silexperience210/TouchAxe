@@ -75,7 +75,8 @@ void StatsManager::addDataPoint(const String& minerIP, float hashrate, float tem
     history->powerHistory.push_back(powerPoint);
     
     // Calculer l'efficacité (J/TH) si les données sont valides
-    if (hashrate > 0 && power > 0) {
+    // Use minimum threshold to avoid division by near-zero values
+    if (hashrate > 0.1 && power > 0) {
         // Efficacité = (Power in Watts) / (Hashrate in TH/s)
         // 1 GH/s = 0.001 TH/s
         float efficiency = power / (hashrate / 1000.0);

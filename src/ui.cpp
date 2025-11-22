@@ -352,14 +352,16 @@ static void displayMinerInCarousel(int minerIndex) {
         lv_obj_set_style_border_color(miner_card, border_color, 0);
         
         // Ajouter un indicateur d'alerte visuel si nécessaire (en haut de la carte)
+        // Note: The entire miner_card is cleaned and recreated on each update (via lv_obj_clean),
+        // so no explicit cleanup of old alert indicators is needed
         if (hasAlert) {
             lv_obj_t* alert_indicator = lv_label_create(miner_card);
             lv_label_set_text(alert_indicator, LV_SYMBOL_WARNING " ALERTE");
             lv_obj_set_style_text_font(alert_indicator, &lv_font_montserrat_12, 0);
             lv_obj_set_style_text_color(alert_indicator, lv_color_hex(0xFF0000), 0);
             lv_obj_set_style_text_align(alert_indicator, LV_TEXT_ALIGN_CENTER, 0);
-            lv_obj_set_width(alert_indicator, LV_PCT(100));  // Pleine largeur
-            // Positionné automatiquement par le flex layout (sera le premier élément)
+            lv_obj_set_width(alert_indicator, LV_PCT(100));  // Full width
+            // Positioned automatically by flex layout (will be first element)
         }
 
         // Nom du device avec statut (en haut, gros)
@@ -409,8 +411,9 @@ static void displayMinerInCarousel(int minerIndex) {
         lv_obj_set_style_text_align(stats_line2, LV_TEXT_ALIGN_CENTER, 0);
 
         // Boutons d'action (en bas, centrés) - DESIGN AMÉLIORÉ, TRÈS FINS
+        // 4 boutons: Stats (STS), Restart (RST), Reboot (RBT), Config (CFG)
         lv_obj_t* btn_row = lv_obj_create(miner_card);
-        lv_obj_set_size(btn_row, 220, 16); // Dimensions ajustées pour 4 boutons
+        lv_obj_set_size(btn_row, 220, 16); // Width adjusted for 4 buttons + spacing
         lv_obj_set_style_bg_color(btn_row, lv_color_hex(0x2a2a2a), 0);
         lv_obj_set_style_border_width(btn_row, 0, 0);
         lv_obj_set_style_pad_all(btn_row, 1, 0); // Padding minimal
