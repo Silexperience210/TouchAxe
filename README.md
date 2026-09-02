@@ -1,17 +1,21 @@
-# ⚡ TouchAxe - Bitcoin Mining Dashboard
+<p align="center">
+  <img src="assets/brand/05_readme_banner_1600x440.png" alt="TouchAxe" width="100%">
+</p>
 
-<div align="center">
+<p align="center">
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="MIT">
+  <img src="https://img.shields.io/badge/PlatformIO-ESP32--S3-orange?style=flat-square" alt="PlatformIO">
+  <img src="https://img.shields.io/badge/LVGL-9.4.0-green?style=flat-square" alt="LVGL">
+  <img src="https://img.shields.io/badge/UI-ORDNANCE%20rev%20A-FFB020?style=flat-square" alt="ORDNANCE">
+</p>
 
-![TouchAxe Logo](https://img.shields.io/badge/⚡-TouchAxe-ff9500?style=for-the-badge)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-[![PlatformIO](https://img.shields.io/badge/PlatformIO-ESP32--S3-orange?style=for-the-badge)](https://platformio.org/)
-[![LVGL](https://img.shields.io/badge/LVGL-9.4.0-green?style=for-the-badge)](https://lvgl.io/)
+**Multi-rig Bitcoin mining telemetry for ESP32-S3 with a 480×272 capacitive touchscreen.**
 
-**Professional Bitcoin mining dashboard for ESP32-S3 with touchscreen**
+[Flash online](#-quick-start) · [Architecture](#-architecture) · [Design system](#-design-system) · [Build from source](#️-building-from-source) · [Issues](https://github.com/Silexperience210/TouchAxe/issues)
 
-[🚀 Flash Online](#-quick-start) • [📖 Documentation](#-features) • [🛠️ Build Guide](#-building-from-source) • [🐛 Issues](https://github.com/Silexperience210/TouchAxe/issues)
-
-</div>
+<p align="center">
+  <img src="assets/brand/03_screen_ops_480x272@4x.png" alt="OPS screen" width="70%">
+</p>
 
 ---
 
@@ -47,6 +51,70 @@
 - **Debug Level 0**: Optimized for production use
 - **Single-Core Stable**: Reliable operation on Core 1
 - **Low Memory Footprint**: 44.5% flash, 34.5% RAM usage
+
+---
+
+## 🧭 Architecture
+
+The single most important rule in this codebase:
+
+> **The LVGL thread never performs network I/O.**
+
+Earlier versions polled every rig with synchronous `HTTPClient` calls from an
+`lv_timer` callback. Each unreachable miner froze the screen for the request
+timeout — four offline rigs meant four seconds of dead touch. That is fixed
+structurally, not by tuning timeouts.
+
+```
+core 0                                   core 1
+┌──────────────────────────┐             ┌──────────────────────────┐
+│ telemetry task           │             │ Arduino loop             │
+│  · polls every rig       │             │  · lv_timer_handler()    │
+│  · drains action queue   │  snapshot   │  · reads snapshot only   │
+│  · checks OTA manifest   │ ──────────▶ │  · never blocks          │
+│  · WiFi / TCP stack      │  (mutex)    │                          │
+└──────────────────────────┘             └──────────────────────────┘
+```
+
+| Module | Responsibility |
+|---|---|
+| `src/telemetry.cpp` | all rig HTTP, snapshot publication, rolling history, action queue |
+| `src/ota_manager.cpp` | manifest check + firmware update over HTTPS |
+| `include/ordnance_theme.h` | every colour, spacing and type token in the project |
+| `src/ui.cpp` | rendering only — reads snapshots, calls no API |
+
+`RigState` is derived in exactly one place (`Telemetry::state()`), so every
+screen agrees on what "thermal" or "fault" means.
+
+### Over-the-air updates
+
+The device checks `docs/ota.json` on GitHub Pages every 6 hours from the
+telemetry task. Updates are downloaded and applied only when explicitly
+triggered, so the screen never goes dark unexpectedly.
+
+---
+
+## 🎨 Design system
+
+The interface follows **ORDNANCE** — a visual system for instruments that must
+be read rather than admired. Ten colours, five type roles, square corners, and
+one law: *colour encodes machine state, never decoration.*
+
+<p align="center">
+  <img src="assets/brand/04_glyph_set.png" alt="ORDNANCE glyph set" width="55%">
+</p>
+
+Every asset in `assets/brand/` is generated procedurally from geometry — no
+stock imagery, no traced sources. The generators live in `tools/design/` and are
+deterministic, so the whole system can be re-cut at any resolution:
+
+```bash
+pip install pillow
+cd tools/design && python brand.py && python screens.py && python icons.py
+```
+
+Full rationale, palette table (with RGB565 values) and construction spec:
+[`docs/design/ORDNANCE_DESIGN_SYSTEM.md`](docs/design/ORDNANCE_DESIGN_SYSTEM.md).
 
 ---
 
@@ -284,21 +352,23 @@ pio run --target upload
 
 ## 🚧 Roadmap
 
-### Version 1.1 (Planned)
-- [ ] Animated transitions between screens
-- [ ] Historical hashrate graphs
-- [ ] Efficiency metrics (J/TH)
-- [ ] Temperature monitoring with alerts
-- [ ] Custom themes and color schemes
+### Shipped in 1.3.0
 
-### Version 2.0 (Future)
-- [ ] OTA firmware updates
+- [x] Non-blocking telemetry task (UI can no longer freeze on a dead rig)
+- [x] Efficiency metric (J/TH)
+- [x] Rolling hashrate history for sparklines
+- [x] Per-rig state model with thermal / fault detection
+- [x] OTA firmware updates
+- [x] ORDNANCE design system and token header
+
+### Next
+
+- [ ] Rebuild the main screen on `ox_tile()` and the token header
+- [ ] Temperature alerts with on-screen acknowledgement
+- [ ] Authentication on the configuration portal
+- [ ] MQTT / Home Assistant discovery
 - [ ] Multi-language support
-- [ ] Home Assistant integration
-- [ ] Mobile app companion
-- [ ] Advanced analytics dashboard
-
----
+- [ ] Unit tests for `Telemetry` state derivation
 
 ## 🤝 Contributing
 
@@ -347,7 +417,6 @@ of this software and associated documentation files...
 
 - **GitHub Issues**: [Report bugs](https://github.com/Silexperience210/TouchAxe/issues)
 - **Discussions**: [Ask questions](https://github.com/Silexperience210/TouchAxe/discussions)
-- **Email**: [Contact developer](mailto:your-email@example.com)
 
 ---
 

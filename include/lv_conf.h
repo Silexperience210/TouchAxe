@@ -37,6 +37,9 @@
 #define LV_USE_MEM_MONITOR 0
 
 /* Fonts (enable the ones you use) */
+#define LV_FONT_MONTSERRAT_10 1  /* ORDNANCE: MICRO role  */
+#define LV_FONT_MONTSERRAT_12 1  /* ORDNANCE: LABEL role  */
+#define LV_FONT_MONTSERRAT_14 1
 #define LV_FONT_MONTSERRAT_16 1
 #define LV_FONT_MONTSERRAT_24 1
 #define LV_FONT_MONTSERRAT_28 1

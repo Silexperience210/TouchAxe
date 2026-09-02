@@ -11,6 +11,8 @@
 #include "wifi_manager.h"
 #include "weather_manager.h"
 #include "bitcoin_api.h"
+#include "telemetry.h"
+#include "ota_manager.h"
 
 static esp_lcd_panel_handle_t panel_handle = NULL;
 static lv_display_t *disp = NULL;
@@ -280,6 +282,15 @@ void setup() {
     Serial.println("Initializing WeatherManager...");
     WeatherManager::getInstance()->init();
     
+    // Démarrer la tâche de télémétrie (cœur 0). À partir d'ici, plus AUCUNE
+    // requête HTTP vers les mineurs n'est faite depuis le thread LVGL.
+    Serial.println("Starting telemetry poller...");
+    Telemetry::start();
+
+    // OTA : vérification en arrière-plan, mise à jour déclenchée explicitement.
+    Serial.println("Initializing OTA manager...");
+    OtaManager::getInstance().begin(FIRMWARE_VERSION, OTA_MANIFEST_URL);
+
     Serial.println("\n=== SETUP COMPLETE ===\n");
 }
 
