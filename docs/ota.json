@@ -1,0 +1,6 @@
+{
+  "version": "1.3.0",
+  "url": "https://silexperience210.github.io/TouchAxe/firmware/firmware.bin",
+  "notes": "Async telemetry, ORDNANCE UI",
+  "min_free_space": 1572864
+}

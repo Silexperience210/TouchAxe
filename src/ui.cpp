@@ -5,6 +5,7 @@
 #include "time_manager.h"
 #include "wifi_manager.h"
 #include "bitaxe_api.h"
+#include "telemetry.h"
 #include "bitcoin_api.h"
 #include "weather_manager.h"
 
@@ -80,86 +81,35 @@ static lv_obj_t* page_indicator = nullptr;  // Indicateur de page
 enum ScreenState { WELCOME_SCREEN, CLOCK_SCREEN, MINERS_SCREEN, DASHBOARD_SCREEN };
 static ScreenState current_screen = WELCOME_SCREEN;
 
-// Fonction pour rafraîchir le cache des statistiques de tous les mineurs
+/*
+ * Stats access. These used to perform synchronous HTTP from the LVGL thread,
+ * freezing the UI for the request timeout on every unreachable rig. They are
+ * now thin, non-blocking readers over the snapshot published by the telemetry
+ * task (see telemetry.h). The signatures are unchanged so the rest of this
+ * file needs no edit.
+ */
 static void refreshStatsCache() {
-    WifiManager* wifi = WifiManager::getInstance();
-    int bitaxeCount = wifi->getBitaxeCount();
-    uint32_t now = millis();
-
-    if (!wifi->isConnected()) {
-        Serial.println("[UI] WiFi not connected - skipping stats cache refresh");
-        return;
-    }
-
-    Serial.printf("[UI] Refreshing stats cache for %d miners...\n", bitaxeCount);
-
-    for (int i = 0; i < bitaxeCount && i < MAX_CACHED_MINERS; i++) {
-        BitaxeDevice* device = wifi->getBitaxe(i);
-        if (device == nullptr) continue;
-
-        // Vérifier si le cache est encore valide (moins de 30 secondes)
-        if (cached_stats_valid[i] && (now - cached_stats_timestamp[i]) < CACHE_TIMEOUT_MS) {
-            continue;  // Cache encore valide, passer au suivant
-        }
-
-        BitaxeAPI api;
-        api.setDevice(device->ip);
-
-        BitaxeStats stats;
-        if (api.getStats(stats)) {
-            // Cache valide
-            cached_stats[i] = stats;
-            cached_stats_timestamp[i] = now;
-            cached_stats_valid[i] = true;
-            device->online = true;
-
-            Serial.printf("[UI] Cached stats for miner %d (%s): %.1f GH/s, %.1f°C\n",
-                        i, device->name.c_str(), stats.hashrate, stats.temp);
-        } else {
-            // Échec de récupération - invalider le cache
-            cached_stats_valid[i] = false;
-            device->online = false;
-            Serial.printf("[UI] Failed to cache stats for miner %d (%s)\n",
-                        i, device->name.c_str());
-        }
-    }
-
-    Serial.println("[UI] Stats cache refresh completed");
+    // Nudge the poller; it publishes on its own schedule. Never blocks.
+    Telemetry::requestRefresh();
 }
 
-// Fonction pour obtenir les stats d'un mineur depuis le cache (ou forcer refresh si expiré)
 static bool getCachedStats(int minerIndex, BitaxeStats& stats) {
-    if (minerIndex < 0 || minerIndex >= MAX_CACHED_MINERS) return false;
-
-    // Si le cache n'est pas valide ou expiré, essayer de rafraîchir
-    if (!cached_stats_valid[minerIndex] ||
-        (millis() - cached_stats_timestamp[minerIndex]) >= CACHE_TIMEOUT_MS) {
-
-        // Forcer un refresh rapide pour ce mineur
-        WifiManager* wifi = WifiManager::getInstance();
-        BitaxeDevice* device = wifi->getBitaxe(minerIndex);
-        if (device && wifi->isConnected()) {
-            BitaxeAPI api;
-            api.setDevice(device->ip);
-
-            if (api.getStats(stats)) {
-                cached_stats[minerIndex] = stats;
-                cached_stats_timestamp[minerIndex] = millis();
-                cached_stats_valid[minerIndex] = true;
-                device->online = true;
-                return true;
-            } else {
-                cached_stats_valid[minerIndex] = false;
-                device->online = false;
-                return false;
-            }
-        }
-        return false;
-    }
-
-    // Cache valide
-    stats = cached_stats[minerIndex];
+    RigSnapshot snap;
+    if (!Telemetry::get(minerIndex, snap)) return false;
+    if (!snap.online || !snap.stats.valid) return false;
+    stats = snap.stats;
     return true;
+}
+
+// Colour for a rig, derived from the single source of truth in telemetry.cpp.
+static lv_color_t stateColor(int minerIndex) {
+    switch (Telemetry::state(minerIndex)) {
+        case RIG_NOMINAL: return lv_color_hex(0x46E0A0);  // OX_PHOS
+        case RIG_LOAD:    return lv_color_hex(0xFFB020);  // OX_AMBER
+        case RIG_THERMAL: return lv_color_hex(0xFF6B1A);  // OX_EMBER
+        case RIG_FAULT:   return lv_color_hex(0xFF3B30);  // OX_ALERT
+        default:          return lv_color_hex(0x55666F);  // OX_GREY
+    }
 }
 
 // Fonction pour rafraîchir les stats Bitaxe
@@ -227,9 +177,9 @@ static void refreshBitaxeStats() {
         updateCarouselIndicators(bitaxeCount);
     }
 
-    // Force immediate refresh after loading data
-    lv_refr_now(NULL);
-    Serial.println("[UI] Bitaxe stats refreshed with carousel display (using cache)");
+    // No lv_refr_now() here: forcing a synchronous redraw from a callback
+    // stalls the render loop. lv_timer_handler() picks the change up next tick.
+    Serial.println("[UI] Bitaxe view refreshed from telemetry snapshot");
 }
 
 // Callback functions for miner actions
@@ -237,14 +187,13 @@ static void miner_restart_cb(lv_event_t * e) {
     lv_obj_t* btn = (lv_obj_t*)lv_event_get_target(e);
     BitaxeDevice* device = (BitaxeDevice*)lv_event_get_user_data(e);
     if (device && device->online) {
-        Serial.printf("[UI] Restarting miner: %s\n", device->name.c_str());
-        BitaxeAPI api;
-        api.setDevice(device->ip);
-        if (api.restart()) {
-            Serial.println("[UI] Restart command sent successfully");
-        } else {
-            Serial.println("[UI] Failed to send restart command");
+        Serial.printf("[UI] Queueing restart for miner: %s\n", device->name.c_str());
+        int idx = -1;
+        WifiManager* wifi = WifiManager::getInstance();
+        for (int i = 0; i < wifi->getBitaxeCount(); i++) {
+            if (wifi->getBitaxe(i) == device) { idx = i; break; }
         }
+        if (idx >= 0) Telemetry::queueAction(idx, Telemetry::ACT_RESTART);
     }
 }
 
@@ -252,14 +201,13 @@ static void miner_reboot_cb(lv_event_t * e) {
     lv_obj_t* btn = (lv_obj_t*)lv_event_get_target(e);
     BitaxeDevice* device = (BitaxeDevice*)lv_event_get_user_data(e);
     if (device && device->online) {
-        Serial.printf("[UI] Rebooting miner: %s\n", device->name.c_str());
-        BitaxeAPI api;
-        api.setDevice(device->ip);
-        if (api.reboot()) {
-            Serial.println("[UI] Reboot command sent successfully");
-        } else {
-            Serial.println("[UI] Failed to send reboot command");
+        Serial.printf("[UI] Queueing reboot for miner: %s\n", device->name.c_str());
+        int idx = -1;
+        WifiManager* wifi = WifiManager::getInstance();
+        for (int i = 0; i < wifi->getBitaxeCount(); i++) {
+            if (wifi->getBitaxe(i) == device) { idx = i; break; }
         }
+        if (idx >= 0) Telemetry::queueAction(idx, Telemetry::ACT_REBOOT);
     }
 }
 
@@ -485,7 +433,7 @@ static void navigateCarousel(bool next) {
         lv_obj_clean(bitaxe_container);
         displayMinerInCarousel(current_miner_index);
         updateCarouselIndicators(bitaxeCount);
-        lv_refr_now(NULL);  // Force refresh immédiat
+        /* redraw happens on the next lv_timer_handler() tick */  // Force refresh immédiat
     }
 }
 
@@ -495,13 +443,7 @@ static void global_restart_all_cb(lv_event_t * e) {
     for (int i = 0; i < wifi->getBitaxeCount(); i++) {
         BitaxeDevice* device = wifi->getBitaxe(i);
         if (device && device->online) {
-            BitaxeAPI api;
-            api.setDevice(device->ip);
-            if (api.restart()) {
-                Serial.printf("[UI] Restarted: %s\n", device->name.c_str());
-            } else {
-                Serial.printf("[UI] Failed to restart: %s\n", device->name.c_str());
-            }
+            Telemetry::queueAction(i, Telemetry::ACT_RESTART);
         }
     }
 }
@@ -567,7 +509,7 @@ static void update_time_cb(lv_timer_t * timer) {
     lv_obj_invalidate(scr);
     
     // Force immediate refresh to bypass partial buffer delay
-    lv_refr_now(NULL);
+    /* redraw happens on the next lv_timer_handler() tick */
     
     // Calculer et mettre à jour le hashrate total
     if (hashrate_total_label != NULL) {
@@ -1586,7 +1528,7 @@ void UI::updateClock() {
     lv_obj_invalidate(lv_screen_active());
     
     // CRITICAL: Force immediate redraw (LVGL v9 + ESP32 RGB workaround)
-    lv_refr_now(NULL);
+    /* redraw happens on the next lv_timer_handler() tick */
 
     // Update hashrate labels (count + sum)
     WifiManager* wifi = WifiManager::getInstance();
@@ -1769,7 +1711,7 @@ void UI::updateBitcoinPrice() {
     lv_obj_invalidate(bitcoin_price_label);
     lv_obj_invalidate(sats_conversion_label);
     if (block_data_container != NULL) lv_obj_invalidate(block_data_container);
-    lv_refr_now(NULL);  // Force immediate redraw
+    /* redraw happens on the next lv_timer_handler() tick */  // Force immediate redraw
 }
 
 // Public method to update falling squares animation (manual, like updateClock)
@@ -1801,52 +1743,34 @@ void UI::checkBitaxeStatus() {
         return;  // No devices configured
     }
     
-    Serial.printf("[UI] Checking status of %d Bitaxe device(s)...\n", bitaxeCount);
-    
-    int onlineCount = 0;
-    float totalHashrate = 0.0;
-    float totalPower = 0.0;    // Consommation totale en Watts
-    uint32_t maxBestDiff = 0;  // Track highest bestDiff across all miners
-    
-    // Quick check each device
+    /*
+     * This used to poll every rig synchronously from the LVGL thread. It now
+     * reads the aggregate that the telemetry task already computed — no I/O,
+     * no possibility of stalling the render loop.
+     */
+    Aggregate agg = Telemetry::aggregate();
+
+    int onlineCount     = agg.onlineCount;
+    float totalHashrate = agg.hashrateGh;
+    float totalPower    = agg.powerW;
+    uint32_t maxBestDiff = agg.bestDiff;
+
+    // Keep the legacy per-device fields in sync for the screens that read them.
     for (int i = 0; i < bitaxeCount; i++) {
         BitaxeDevice* device = wifi->getBitaxe(i);
-        if (device == nullptr) continue;
-        
-        BitaxeAPI api;
-        api.setDevice(device->ip);
-        
-        BitaxeStats stats;
-        bool success = api.getStats(stats);
-        
-        device->online = success;
-        
-        if (success) {
-            onlineCount++;
-            totalHashrate += stats.hashrate;
-            totalPower += stats.power;
-            
-            // Store stats in device structure
-            device->bestDiff = stats.bestDiff;
-            device->bestSessionDiff = stats.bestDiff;
-            device->power = stats.power;
-            
-            // Track maximum across all miners
-            if (stats.bestDiff > maxBestDiff) {
-                maxBestDiff = stats.bestDiff;
-            }
-            
-            Serial.printf("[UI]   [%d] %s - ONLINE (%.1f GH/s, %.1f°C, %.1fW, bestDiff=%u)\n", 
-                i, device->name.c_str(), stats.hashrate, stats.temp, stats.power, stats.bestDiff);
+        RigSnapshot snap;
+        if (!device || !Telemetry::get(i, snap)) continue;
+        if (snap.online && snap.stats.valid) {
+            device->bestDiff        = snap.stats.bestDiff;
+            device->bestSessionDiff = snap.stats.bestDiff;
+            device->power           = snap.stats.power;
         } else {
-            Serial.printf("[UI]   [%d] %s - OFFLINE (%s)\n", 
-                i, device->name.c_str(), device->ip.c_str());
             device->bestDiff = 0;
             device->bestSessionDiff = 0;
             device->power = 0;
         }
     }
-    
+
     Serial.printf("[UI] Total: %d online, %.1f GH/s, %.1fW, Best Diff=%u\n", onlineCount, totalHashrate, totalPower, maxBestDiff);
     
     // Update clock screen labels if we're on it
@@ -1980,6 +1904,6 @@ void UI::updateWeatherDisplay() {
     
     lv_obj_invalidate(weather_label);
     lv_obj_invalidate(weather_icon_label);
-    lv_refr_now(NULL);  // Force immediate redraw
+    /* redraw happens on the next lv_timer_handler() tick */  // Force immediate redraw
 }
 

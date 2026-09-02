@@ -71,6 +71,21 @@ jobs:
         }
         EOF
         
+    - name: Create OTA manifest (docs/ota.json)
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: |
+        VERSION="${GITHUB_REF_NAME#v}"
+        SHA=$(sha256sum firmware_release/firmware.bin | cut -d" " -f1)
+        cat > docs/ota.json << EOF
+        {
+          "version": "${VERSION}",
+          "url": "https://${{ github.repository_owner }}.github.io/TouchAxe/firmware/firmware.bin",
+          "sha256": "${SHA}",
+          "notes": "Release ${GITHUB_REF_NAME}"
+        }
+        EOF
+        cat docs/ota.json
+
     - name: Upload firmware artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -94,7 +109,10 @@ jobs:
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
-        git add firmware/
+        cp -f firmware_release/firmware.bin docs/firmware/firmware.bin || true
+        cp -f firmware_release/bootloader.bin docs/firmware/bootloader.bin || true
+        cp -f firmware_release/partitions.bin docs/firmware/partitions.bin || true
+        git add firmware/ docs/firmware/ docs/ota.json
         git diff --staged --quiet || git commit -m "Auto-update firmware binaries [skip ci]"
         git push
 
