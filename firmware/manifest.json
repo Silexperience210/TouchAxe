@@ -1,6 +1,6 @@
 {
   "name": "TouchAxe Mining Dashboard",
-  "version": "1.0.0",
+  "version": "main",
   "funding_url": "https://github.com/Silexperience210/TouchAxe",
   "new_install_prompt_erase": true,
   "builds": [
